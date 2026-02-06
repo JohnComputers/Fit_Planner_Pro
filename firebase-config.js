@@ -25,13 +25,13 @@
 
 // YOUR FIREBASE CONFIG (Replace with your actual values from Firebase Console)
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyC6rDODs6I0R9vr6AI1OOUBe229sVx0lq0",
+  authDomain: "fitplanner-pro-638ea.firebaseapp.com",
+  databaseURL: "https://fitplanner-pro-638ea-default-rtdb.firebaseio.com",
+  projectId: "fitplanner-pro-638ea",
+  storageBucket: "fitplanner-pro-638ea.appspot.com",
+  messagingSenderId: "519608386811",
+  appId: "1:519608386811:web:85985a56be151ac151dc5e"
 };
 
 // Initialize Firebase
