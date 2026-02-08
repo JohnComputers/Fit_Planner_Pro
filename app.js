@@ -3,6 +3,20 @@
 
 // Tab switching
 function switchTab(tabName) {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    // Check permissions before switching
+    if (tabName === 'goals' && currentUser.tier === 'FREE') {
+        alert('Upgrade to Basic Pack or higher to access Nutrition Goals!\n\nClick "Upgrade" tab to unlock this feature.');
+        return;
+    }
+    
+    if (tabName === 'workouts' && currentUser.tier !== 'ELITE') {
+        alert('Upgrade to Premium Pack to access Workout Plans!\n\nClick "Upgrade" tab to unlock this feature.');
+        return;
+    }
+    
     // Hide all tabs
     const tabs = document.querySelectorAll('.tab-content');
     tabs.forEach(tab => tab.classList.remove('active'));
@@ -15,7 +29,12 @@ function switchTab(tabName) {
     document.getElementById(tabName + 'Tab').classList.add('active');
     
     // Add active class to clicked button
-    event.target.closest('.tab-btn').classList.add('active');
+    if (event && event.target) {
+        event.target.closest('.tab-btn').classList.add('active');
+    } else {
+        // Fallback if event is not available
+        document.querySelector(`[onclick*="${tabName}"]`).classList.add('active');
+    }
     
     // Update displays when switching tabs
     if (tabName === 'nutrition') {
@@ -23,10 +42,14 @@ function switchTab(tabName) {
     } else if (tabName === 'goals') {
         loadGoals();
         updateGoalProgress();
-        calculateWeeklyTrends();
-        generateMealSuggestions();
+        setTimeout(() => {
+            calculateWeeklyTrends();
+            generateMealSuggestions();
+        }, 100);
     } else if (tabName === 'workouts') {
-        loadWorkoutWeek();
+        setTimeout(() => {
+            loadWorkoutWeek();
+        }, 100);
     }
 }
 
@@ -42,12 +65,14 @@ function updateFeatureAccess() {
     const goalsLock = document.getElementById('goalsLock');
     
     if (tier === 'FREE') {
-        goalsTab.onclick = function() {
+        goalsTab.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             alert('Upgrade to Basic Pack or higher to access Nutrition Goals!\n\nClick "Upgrade" tab to unlock this feature.');
         };
         goalsLock.style.display = 'inline';
     } else {
-        goalsTab.onclick = function() { switchTab('goals'); };
+        goalsTab.onclick = null; // Remove the onclick handler
         goalsLock.style.display = 'none';
     }
     
@@ -56,12 +81,14 @@ function updateFeatureAccess() {
     const workoutsLock = document.getElementById('workoutsLock');
     
     if (tier !== 'ELITE') {
-        workoutsTab.onclick = function() {
+        workoutsTab.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             alert('Upgrade to Premium Pack to access Workout Plans!\n\nClick "Upgrade" tab to unlock this feature.');
         };
         workoutsLock.style.display = 'inline';
     } else {
-        workoutsTab.onclick = function() { switchTab('workouts'); };
+        workoutsTab.onclick = null; // Remove the onclick handler
         workoutsLock.style.display = 'none';
     }
 }
