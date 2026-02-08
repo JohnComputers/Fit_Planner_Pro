@@ -140,6 +140,83 @@
                     <p class="section-subtitle">Set your daily targets and track progress</p>
                 </div>
 
+                <!-- Macro Calculator Tool -->
+                <div class="calculator-section">
+                    <div class="calculator-card">
+                        <div class="calculator-header">
+                            <h3>🧮 Macro Calculator</h3>
+                            <p>Calculate your personalized nutrition targets</p>
+                        </div>
+                        <div class="calculator-inputs">
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label>Age</label>
+                                    <input type="number" id="calcAge" placeholder="25">
+                                </div>
+                                <div class="input-group">
+                                    <label>Gender</label>
+                                    <select id="calcGender">
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label>Weight (lbs)</label>
+                                    <input type="number" id="calcWeight" placeholder="170">
+                                </div>
+                                <div class="input-group">
+                                    <label>Height (inches)</label>
+                                    <input type="number" id="calcHeight" placeholder="70">
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>Activity Level</label>
+                                <select id="calcActivity">
+                                    <option value="1.2">Sedentary (little or no exercise)</option>
+                                    <option value="1.375">Lightly active (1-3 days/week)</option>
+                                    <option value="1.55" selected>Moderately active (3-5 days/week)</option>
+                                    <option value="1.725">Very active (6-7 days/week)</option>
+                                    <option value="1.9">Extremely active (athlete)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Goal</label>
+                                <select id="calcGoal">
+                                    <option value="cut">Fat Loss (Cutting)</option>
+                                    <option value="maintain" selected>Maintain Weight</option>
+                                    <option value="bulk">Muscle Gain (Bulking)</option>
+                                </select>
+                            </div>
+                            <button onclick="calculateMacros()" class="btn-primary">Calculate My Macros</button>
+                        </div>
+                        <div id="calculatorResults" class="calculator-results" style="display: none;">
+                            <h4>Your Personalized Targets</h4>
+                            <div class="results-grid">
+                                <div class="result-item">
+                                    <span class="result-label">Calories</span>
+                                    <span class="result-value" id="resultCalories">0</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Protein</span>
+                                    <span class="result-value" id="resultProtein">0g</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Carbs</span>
+                                    <span class="result-value" id="resultCarbs">0g</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Fats</span>
+                                    <span class="result-value" id="resultFats">0g</span>
+                                </div>
+                            </div>
+                            <button onclick="applyCalculatedMacros()" class="btn-secondary">Apply These Goals</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Goal Setting -->
                 <div class="goals-container">
                     <div class="tracker-card">
                         <div class="card-header">
@@ -201,9 +278,25 @@
                                 <span class="stat-value" id="displayGoalSugar">Not Set</span>
                             </div>
                         </div>
+                        <div class="macro-breakdown" id="macroBreakdown" style="display: none;">
+                            <h4>Macro Breakdown</h4>
+                            <div class="breakdown-item">
+                                <span>Protein:</span>
+                                <span id="proteinPercentage">0%</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span>Carbs:</span>
+                                <span id="carbsPercentage">0%</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span>Fats:</span>
+                                <span id="fatsPercentage">0%</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+                <!-- Today's Progress -->
                 <div class="goal-progress-section">
                     <h3>Today's Progress</h3>
                     <div class="progress-grid">
@@ -217,6 +310,7 @@
                             </div>
                             <div class="progress-details">
                                 <span id="caloriesConsumed">0</span> / <span id="caloriesTarget">0</span>
+                                <span id="caloriesRemaining" class="remaining-text"></span>
                             </div>
                         </div>
 
@@ -230,6 +324,7 @@
                             </div>
                             <div class="progress-details">
                                 <span id="proteinConsumed">0</span>g / <span id="proteinTarget">0</span>g
+                                <span id="proteinRemaining" class="remaining-text"></span>
                             </div>
                         </div>
 
@@ -243,6 +338,7 @@
                             </div>
                             <div class="progress-details">
                                 <span id="carbsConsumed">0</span>g / <span id="carbsTarget">0</span>g
+                                <span id="carbsRemaining" class="remaining-text"></span>
                             </div>
                         </div>
 
@@ -256,23 +352,520 @@
                             </div>
                             <div class="progress-details">
                                 <span id="sugarConsumed">0</span>g / <span id="sugarTarget">50</span>g max
+                                <span id="sugarRemaining" class="remaining-text"></span>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="goal-tips">
-                        <h4>💡 Pro Tips</h4>
-                        <ul>
-                            <li>Stay within 10% of your calorie goal for best results</li>
-                            <li>Hit your protein target every day to preserve muscle</li>
-                            <li>Time your carbs around workouts for better performance</li>
-                            <li>Keep sugar under 50g to avoid energy crashes</li>
-                        </ul>
+                <!-- Weekly Trends -->
+                <div class="weekly-trends">
+                    <h3>7-Day Trends</h3>
+                    <div class="trends-grid">
+                        <div class="trend-card">
+                            <div class="trend-header">
+                                <span>📊 Average Daily Calories</span>
+                            </div>
+                            <div class="trend-value" id="avgCalories">0</div>
+                            <div class="trend-comparison" id="caloriesTrend"></div>
+                        </div>
+                        <div class="trend-card">
+                            <div class="trend-header">
+                                <span>💪 Average Daily Protein</span>
+                            </div>
+                            <div class="trend-value" id="avgProtein">0g</div>
+                            <div class="trend-comparison" id="proteinTrend"></div>
+                        </div>
+                        <div class="trend-card">
+                            <div class="trend-header">
+                                <span>🎯 Goal Adherence</span>
+                            </div>
+                            <div class="trend-value" id="adherenceRate">0%</div>
+                            <div class="trend-comparison" id="adherenceTrend"></div>
+                        </div>
+                        <div class="trend-card">
+                            <div class="trend-header">
+                                <span>🔥 Consistency Streak</span>
+                            </div>
+                            <div class="trend-value" id="consistencyStreak">0 days</div>
+                            <div class="trend-comparison" id="streakTrend"></div>
+                        </div>
                     </div>
+                </div>
+
+                <!-- Meal Planning Suggestions -->
+                <div class="meal-suggestions">
+                    <h3>💡 Smart Meal Suggestions</h3>
+                    <div class="suggestions-grid" id="mealSuggestions">
+                        <!-- Populated by JavaScript based on remaining macros -->
+                    </div>
+                </div>
+
+                <!-- Pro Tips -->
+                <div class="goal-tips">
+                    <h4>💡 Pro Nutrition Tips</h4>
+                    <ul>
+                        <li>Stay within 10% of your calorie goal for optimal results</li>
+                        <li>Hit your protein target every day to preserve muscle mass during cuts</li>
+                        <li>Time your carbs around workouts (pre/post) for better performance and recovery</li>
+                        <li>Keep sugar under 50g to avoid energy crashes and insulin spikes</li>
+                        <li>Drink at least 0.5oz of water per lb of body weight daily</li>
+                        <li>Spread protein intake across 4-6 meals for maximum muscle protein synthesis</li>
+                        <li>Include healthy fats (avocado, nuts, olive oil) for hormone production</li>
+                        <li>Track consistently for at least 2 weeks before adjusting macros</li>
+                    </ul>
                 </div>
             </div>
 
             <!-- Workout Plans Tab -->
+            <div id="workoutsTab" class="tab-content">
+                <div class="section-header">
+                    <h2>Workout Plans</h2>
+                    <p class="section-subtitle">Your complete Push/Pull/Legs training program</p>
+                </div>
+
+                <!-- Program Overview -->
+                <div class="workout-intro">
+                    <div class="workout-info-card">
+                        <h3>🏋️ About This Program</h3>
+                        <p>The Push/Pull/Legs split is one of the most effective training programs for building muscle and strength. Train 3-6 days per week with at least one rest day between repeated muscle groups.</p>
+                        <div class="workout-schedule">
+                            <div class="schedule-item">
+                                <strong>Beginner (3 days/week):</strong> Push → Rest → Pull → Rest → Legs → Rest → Rest
+                            </div>
+                            <div class="schedule-item">
+                                <strong>Intermediate (4-5 days/week):</strong> Push → Pull → Rest → Legs → Push → Pull → Rest
+                            </div>
+                            <div class="schedule-item">
+                                <strong>Advanced (6 days/week):</strong> Push → Pull → Legs → Push → Pull → Legs → Rest
+                            </div>
+                        </div>
+                        <div class="program-stats">
+                            <div class="stat-badge">
+                                <span class="badge-icon">⏱️</span>
+                                <span class="badge-text">60-90 min per session</span>
+                            </div>
+                            <div class="stat-badge">
+                                <span class="badge-icon">📈</span>
+                                <span class="badge-text">Progressive overload focused</span>
+                            </div>
+                            <div class="stat-badge">
+                                <span class="badge-icon">💪</span>
+                                <span class="badge-text">Muscle & strength building</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workout Progress Tracker -->
+                <div class="workout-tracker-section">
+                    <h3>📊 This Week's Training Log</h3>
+                    <div class="week-tracker">
+                        <div class="day-check" onclick="toggleWorkoutDay('mon')">
+                            <div class="day-label">Mon</div>
+                            <div class="check-circle" id="check-mon"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('tue')">
+                            <div class="day-label">Tue</div>
+                            <div class="check-circle" id="check-tue"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('wed')">
+                            <div class="day-label">Wed</div>
+                            <div class="check-circle" id="check-wed"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('thu')">
+                            <div class="day-label">Thu</div>
+                            <div class="check-circle" id="check-thu"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('fri')">
+                            <div class="day-label">Fri</div>
+                            <div class="check-circle" id="check-fri"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('sat')">
+                            <div class="day-label">Sat</div>
+                            <div class="check-circle" id="check-sat"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('sun')">
+                            <div class="day-label">Sun</div>
+                            <div class="check-circle" id="check-sun"></div>
+                        </div>
+                    </div>
+                    <div class="week-summary">
+                        <span id="weekWorkouts">0</span> workouts this week • 
+                        <span id="weekStreak">0</span> day streak
+                    </div>
+                </div>
+
+                <!-- Workout Cards -->
+                <div class="workouts-grid">
+                    <!-- Push Day -->
+                    <div class="workout-card">
+                        <div class="workout-header push">
+                            <h3>Push Day</h3>
+                            <span class="workout-tag">Chest, Shoulders, Triceps</span>
+                        </div>
+                        <div class="workout-body">
+                            <div class="workout-description">
+                                <p><strong>Focus:</strong> Pushing movements that target chest, shoulders, and triceps. Rest 2-3 minutes between heavy sets, 60-90 seconds for accessories.</p>
+                                <p><strong>Warm-up:</strong> 5-10 min light cardio + arm circles, shoulder rotations, push-up variations</p>
+                            </div>
+                            <ul class="workout-exercises">
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">1. Barbell Bench Press</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Lower to mid-chest, keep elbows at 45°, press explosively, squeeze chest at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Pectorals | Secondary: Anterior deltoids, triceps</div>
+                                        <div class="exercise-tip">📊 <strong>Progression:</strong> Add 2.5-5lbs when you hit 4x10 with good form</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">2. Overhead Press (Barbell or Dumbbell)</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Core tight, glutes squeezed, press straight up, full lockout at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Deltoids (all heads) | Secondary: Upper chest, triceps, core</div>
+                                        <div class="exercise-tip">⚠️ <strong>Safety:</strong> Don't arch lower back excessively, keep wrists straight</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">3. Incline Dumbbell Press</div>
+                                        <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> 30-45° incline, full range of motion, control the descent</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Upper chest | Secondary: Front delts, triceps</div>
+                                        <div class="exercise-tip">🔄 <strong>Variation:</strong> Try different incline angles to target upper chest fibers</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">4. Lateral Raises</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Slight bend in elbows, lead with elbows not hands, raise to shoulder height</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Lateral deltoids (side delts)</div>
+                                        <div class="exercise-tip">⚡ <strong>Tempo:</strong> 2 sec up, 1 sec squeeze, 2 sec down for maximum tension</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">5. Tricep Dips (Weighted if possible)</div>
+                                        <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Lean forward 20-30° for chest emphasis, upright for triceps</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Triceps, lower chest | Secondary: Front delts</div>
+                                        <div class="exercise-tip">📈 <strong>Progression:</strong> Add weight belt when bodyweight becomes easy</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">6. Cable Flyes</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Slight bend in elbows, squeeze pecs together at center, control return</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Chest (isolation)</div>
+                                        <div class="exercise-tip">🔥 <strong>Finisher:</strong> Drop set on last set for maximum pump</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">7. Overhead Tricep Extension</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Keep elbows stationary, full stretch at bottom, squeeze at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Triceps (long head emphasis)</div>
+                                        <div class="exercise-tip">🎵 <strong>Cue:</strong> "Only forearms move" - elbows stay fixed in space</div>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div class="workout-footer">
+                                <button class="btn-workout-note" onclick="alert('Track your weights! Write down your numbers for progressive overload.')">📝 Add Workout Notes</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pull Day -->
+                    <div class="workout-card">
+                        <div class="workout-header pull">
+                            <h3>Pull Day</h3>
+                            <span class="workout-tag">Back, Biceps, Rear Delts</span>
+                        </div>
+                        <div class="workout-body">
+                            <div class="workout-description">
+                                <p><strong>Focus:</strong> Pulling movements for a thick, wide back and strong biceps. Rest 2-3 minutes between heavy compounds, 60-90 seconds for accessories.</p>
+                                <p><strong>Warm-up:</strong> 5-10 min rowing/biking + band pull-aparts, dead hangs, light rows</p>
+                            </div>
+                            <ul class="workout-exercises">
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">1. Deadlifts (Conventional or Romanian)</div>
+                                        <div class="exercise-sets">4 sets × 6-8 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Flat back, chest up, drive through heels, hips and shoulders rise together</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Entire posterior chain | Secondary: Traps, forearms, core</div>
+                                        <div class="exercise-tip">⚠️ <strong>Safety:</strong> Master form with lighter weight first, use mixed grip or straps for heavy sets</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">2. Pull-ups or Lat Pulldowns</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Pull to upper chest, squeeze lats at bottom, control the ascent</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Lats (width) | Secondary: Biceps, rear delts, mid-back</div>
+                                        <div class="exercise-tip">📈 <strong>Progression:</strong> Add weight belt for pull-ups, increase weight for pulldowns</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">3. Barbell Rows</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> 45° torso angle, pull to lower chest, squeeze shoulder blades together</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Mid-back thickness | Secondary: Lats, rear delts, biceps</div>
+                                        <div class="exercise-tip">🔄 <strong>Variation:</strong> Underhand grip emphasizes lower lats and biceps</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">4. Seated Cable Rows</div>
+                                        <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Chest out, pull to lower abs, squeeze shoulder blades, 2 sec hold at contraction</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Mid-back, rhomboids | Secondary: Lats, biceps</div>
+                                        <div class="exercise-tip">⚡ <strong>Mind-Muscle:</strong> Focus on pulling with elbows, not hands</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">5. Face Pulls</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Pull rope to face level, externally rotate shoulders at end, squeeze rear delts</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Rear deltoids | Secondary: Mid-back, rotator cuff</div>
+                                        <div class="exercise-tip">🏥 <strong>Health:</strong> Essential for shoulder health and posture correction</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">6. Barbell Curls</div>
+                                        <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Elbows stationary against ribs, full ROM, squeeze biceps at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Biceps brachii | Secondary: Forearms</div>
+                                        <div class="exercise-tip">⚠️ <strong>Common Mistake:</strong> Don't swing or use momentum - strict form only</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">7. Hammer Curls</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Neutral grip (thumbs up), curl together or alternating, control the negative</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Brachialis, brachioradialis | Secondary: Biceps</div>
+                                        <div class="exercise-tip">📏 <strong>Benefit:</strong> Builds arm thickness and forearm size</div>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div class="workout-footer">
+                                <button class="btn-workout-note" onclick="alert('Focus on back activation! If you only feel arms, lighten the weight.')">📝 Add Workout Notes</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Leg Day -->
+                    <div class="workout-card">
+                        <div class="workout-header legs">
+                            <h3>Leg Day</h3>
+                            <span class="workout-tag">Quads, Hamstrings, Glutes, Calves</span>
+                        </div>
+                        <div class="workout-body">
+                            <div class="workout-description">
+                                <p><strong>Focus:</strong> Build powerful legs and a strong foundation. Never skip leg day! Rest 2-3 minutes between heavy compounds.</p>
+                                <p><strong>Warm-up:</strong> 5-10 min bike/elliptical + bodyweight squats, leg swings, hip circles</p>
+                            </div>
+                            <ul class="workout-exercises">
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">1. Barbell Back Squats</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Bar on upper traps, chest up, break at hips and knees together, depth to parallel or below</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Quads, glutes | Secondary: Hamstrings, core, entire lower body</div>
+                                        <div class="exercise-tip">⚠️ <strong>Safety:</strong> Knees track over toes, keep core braced, drive through full foot</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">2. Romanian Deadlifts</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Slight knee bend, push hips back, feel hamstring stretch, squeeze glutes at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Hamstrings, glutes | Secondary: Lower back, forearms</div>
+                                        <div class="exercise-tip">🎵 <strong>Cue:</strong> "Push your butt to the wall behind you" for proper hip hinge</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">3. Leg Press</div>
+                                        <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Full ROM without lower back rounding, control the descent</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Quads | Foot position: High = hamstrings/glutes, Low = quads</div>
+                                        <div class="exercise-tip">📈 <strong>Benefit:</strong> Safe way to overload legs without spinal loading</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">4. Walking Lunges</div>
+                                        <div class="exercise-sets">3 sets × 12 reps each leg</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Long stride, back knee nearly touches ground, keep torso upright</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Quads, glutes | Secondary: Core stability, balance</div>
+                                        <div class="exercise-tip">🏃 <strong>Benefit:</strong> Unilateral strength, fixes muscle imbalances</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">5. Leg Curls (Lying or Seated)</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Full contraction at top, 2 sec squeeze, control the negative</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Hamstrings (isolation)</div>
+                                        <div class="exercise-tip">⚡ <strong>Intensity:</strong> Point toes down for extra hamstring contraction</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">6. Leg Extensions</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Full extension at top, squeeze quads hard, slow controlled descent</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Quadriceps (isolation)</div>
+                                        <div class="exercise-tip">🔥 <strong>Finisher:</strong> 1/4 reps at the end for insane quad pump</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">7. Standing Calf Raises</div>
+                                        <div class="exercise-sets">4 sets × 15-20 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Full stretch at bottom, explosive rise, 2 sec pause at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Gastrocnemius (calf muscle)</div>
+                                        <div class="exercise-tip">📊 <strong>Variation:</strong> Add seated calf raises for soleus muscle development</div>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div class="workout-footer">
+                                <button class="btn-workout-note" onclick="alert('Leg day is growth day! Push hard and fuel properly after.')">📝 Add Workout Notes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training Principles -->
+                <div class="workout-tips-section">
+                    <h3>🎯 Essential Training Principles</h3>
+                    <div class="tips-grid">
+                        <div class="tip-card">
+                            <div class="tip-icon">💪</div>
+                            <h4>Progressive Overload</h4>
+                            <p>The foundation of muscle growth. Gradually increase weight, reps, or sets over time. Aim to beat your previous performance each week. Track every workout!</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">⏱️</div>
+                            <h4>Rest Periods</h4>
+                            <p>Heavy compounds (1-6 reps): 3-5 min. Moderate sets (6-12 reps): 2-3 min. High reps (12-15+): 60-90 sec. Don't rush - full recovery = better performance.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">🎯</div>
+                            <h4>Perfect Form First</h4>
+                            <p>Master technique before adding weight. Poor form = injuries and suboptimal gains. Record your sets, get feedback, and leave your ego at the door.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">🔥</div>
+                            <h4>Proper Warm-Up</h4>
+                            <p>5-10 minutes cardio to raise heart rate. Dynamic stretching for the muscles you'll train. 2-3 warm-up sets with progressively heavier weight before working sets.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">😴</div>
+                            <h4>Recovery & Sleep</h4>
+                            <p>Muscle grows during rest, not in the gym. Get 7-9 hours of sleep. Take 1-2 complete rest days per week. Deload every 4-6 weeks (reduce volume by 50%).</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">🍽️</div>
+                            <h4>Nutrition Timing</h4>
+                            <p>Pre-workout (1-2 hrs before): Carbs + moderate protein. Post-workout (30-60 min after): Fast-digesting protein + carbs to replenish glycogen and start recovery.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">💧</div>
+                            <h4>Hydration</h4>
+                            <p>Drink 0.5-1oz water per lb of bodyweight daily. More on training days. Dehydration reduces strength by 10-20%. Bring water to every workout.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">📊</div>
+                            <h4>Track Everything</h4>
+                            <p>Log every workout: exercises, sets, reps, weight used. Track body measurements weekly. Take progress photos monthly. You can't improve what you don't measure.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Exercise Form Reference -->
+                <div class="form-reference-section">
+                    <h3>📚 Exercise Form Resources</h3>
+                    <div class="reference-grid">
+                        <div class="reference-card">
+                            <h4>🎥 Video Tutorials</h4>
+                            <ul>
+                                <li>AthleanX - Form breakdowns and common mistakes</li>
+                                <li>Jeff Nippard - Science-based technique guides</li>
+                                <li>Renaissance Periodization - Muscle-specific training</li>
+                            </ul>
+                        </div>
+                        <div class="reference-card">
+                            <h4>📱 Useful Apps</h4>
+                            <ul>
+                                <li>Strong - Workout tracking and progression</li>
+                                <li>Hevy - Exercise database with demos</li>
+                                <li>MyFitnessPal - Nutrition tracking integration</li>
+                            </ul>
+                        </div>
+                        <div class="reference-card">
+                            <h4>⚠️ When to Deload</h4>
+                            <ul>
+                                <li>Persistent joint pain or unusual soreness</li>
+                                <li>3+ consecutive workouts below usual performance</li>
+                                <li>Poor sleep, low motivation, or illness</li>
+                                <li>Every 4-6 weeks as planned recovery</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div id="workoutsTab" class="tab-content">
                 <div class="section-header">
                     <h2>Workout Plans</h2>
@@ -559,7 +1152,7 @@
 
         <!-- Footer -->
         <footer class="app-footer">
-            <p>&copy; 2024 FitPlanner Pro. Track smarter, achieve faster.</p>
+            <p>&copy; 2026 FitPlanner Pro. Track smarter, achieve faster.</p>
         </footer>
     </div>
 
