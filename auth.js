@@ -348,4 +348,3 @@ function updateTierDisplay() {
         tierElement.style.background = 'linear-gradient(135deg, #666, #888)';
     }
 }
-
