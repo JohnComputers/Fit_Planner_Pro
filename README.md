@@ -248,4 +248,3 @@ For issues:
 Track smarter, achieve faster with FitPlanner Pro!
 
 **Now with real authentication, cloud sync, and production-ready features!** ✨
-
