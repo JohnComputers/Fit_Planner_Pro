@@ -41,9 +41,17 @@ function loadUserFromFirebase(firebaseUser) {
         
         if (userData) {
             // User data exists in database
+            let tier = userData.tier || 'FREE';
+            
+            // Auto-upgrade admin email to ELITE
+            if (firebaseUser.email === 'random111199@gmail.com' && tier !== 'ELITE') {
+                tier = 'ELITE';
+                userRef.update({ tier: 'ELITE' });
+            }
+            
             const currentUser = {
                 email: firebaseUser.email,
-                tier: userData.tier || 'FREE',
+                tier: tier,
                 isGuest: false,
                 uid: firebaseUser.uid
             };
@@ -52,16 +60,23 @@ function loadUserFromFirebase(firebaseUser) {
             showApp(currentUser);
         } else {
             // First time login, create user profile
+            let tier = 'FREE';
+            
+            // Auto-upgrade admin email to ELITE
+            if (firebaseUser.email === 'random111199@gmail.com') {
+                tier = 'ELITE';
+            }
+            
             const newUserData = {
                 email: firebaseUser.email,
-                tier: 'FREE',
+                tier: tier,
                 createdAt: new Date().toISOString()
             };
             
             userRef.set(newUserData).then(() => {
                 const currentUser = {
                     email: firebaseUser.email,
-                    tier: 'FREE',
+                    tier: tier,
                     isGuest: false,
                     uid: firebaseUser.uid
                 };
@@ -72,9 +87,15 @@ function loadUserFromFirebase(firebaseUser) {
         }
     }).catch((error) => {
         console.error('Error loading user data:', error);
+        
+        let tier = 'FREE';
+        if (firebaseUser.email === 'random111199@gmail.com') {
+            tier = 'ELITE';
+        }
+        
         showApp({
             email: firebaseUser.email,
-            tier: 'FREE',
+            tier: tier,
             isGuest: false,
             uid: firebaseUser.uid
         });
@@ -136,10 +157,16 @@ function handleRegister() {
                 // Account created successfully
                 const user = userCredential.user;
                 
+                // Auto-upgrade admin email to ELITE
+                let tier = 'FREE';
+                if (email === 'random111199@gmail.com') {
+                    tier = 'ELITE';
+                }
+                
                 // Create user profile in database
                 firebase.database().ref('users/' + user.uid).set({
                     email: email,
-                    tier: 'FREE',
+                    tier: tier,
                     createdAt: new Date().toISOString()
                 }).then(() => {
                     showSuccessMessage('Account created successfully!');
@@ -166,11 +193,17 @@ function handleRegister() {
             return;
         }
         
+        // Auto-upgrade admin email to ELITE
+        let tier = 'FREE';
+        if (email === 'random111199@gmail.com') {
+            tier = 'ELITE';
+        }
+        
         const newUser = {
             email: email,
             password: password,
             createdAt: new Date().toISOString(),
-            tier: 'FREE'
+            tier: tier
         };
         
         users.push(newUser);
@@ -178,7 +211,7 @@ function handleRegister() {
         
         const currentUser = {
             email: email,
-            tier: 'FREE',
+            tier: tier,
             isGuest: false
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -203,7 +236,16 @@ function handleLogin() {
         // Use Firebase Authentication
         firebase.auth().signInWithEmailAndPassword(email, password)
             .then((userCredential) => {
-                // Login successful - onAuthStateChanged will handle the rest
+                // Login successful - check if admin and upgrade if needed
+                if (email === 'random111199@gmail.com') {
+                    const user = userCredential.user;
+                    firebase.database().ref('users/' + user.uid).once('value').then((snapshot) => {
+                        const userData = snapshot.val();
+                        if (userData && userData.tier !== 'ELITE') {
+                            firebase.database().ref('users/' + user.uid).update({ tier: 'ELITE' });
+                        }
+                    });
+                }
                 showSuccessMessage('Welcome back!');
             })
             .catch((error) => {
@@ -225,9 +267,17 @@ function handleLogin() {
             return;
         }
         
+        // Auto-upgrade admin email to ELITE
+        let tier = user.tier || 'FREE';
+        if (email === 'random111199@gmail.com' && tier !== 'ELITE') {
+            tier = 'ELITE';
+            user.tier = 'ELITE';
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+        
         const currentUser = {
             email: email,
-            tier: user.tier || 'FREE',
+            tier: tier,
             isGuest: false
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
