@@ -106,50 +106,99 @@ function updateFeatureAccess() {
 
 // Add nutrition entry
 function addNutritionEntry() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+        alert('Please log in to track nutrition');
+        return;
+    }
+    
+    // Get input values
     const calories = parseInt(document.getElementById('caloriesInput').value) || 0;
     const protein = parseInt(document.getElementById('proteinInput').value) || 0;
     const carbs = parseInt(document.getElementById('carbsInput').value) || 0;
     const sugar = parseInt(document.getElementById('sugarInput').value) || 0;
     
+    // Validation
     if (calories === 0 && protein === 0 && carbs === 0 && sugar === 0) {
-        alert('Please enter at least one nutrition value');
+        showTooltip(
+            document.getElementById('caloriesInput'),
+            'Please enter at least one value to track!'
+        );
         return;
     }
     
-    const entry = {
-        id: Date.now(),
-        date: new Date().toISOString(),
-        calories: calories,
-        protein: protein,
-        carbs: carbs,
-        sugar: sugar
-    };
-    
-    // Get current user's entries
-    const currentUser = getCurrentUser();
-    const storageKey = `nutrition_${currentUser.email}`;
-    const entries = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    
-    entries.push(entry);
-    localStorage.setItem(storageKey, JSON.stringify(entries));
-    
-    // Sync to Firebase if available
-    if (isFirebaseReady() && currentUser.uid) {
-        firebase.database().ref('users/' + currentUser.uid + '/nutrition/' + entry.id).set(entry);
+    // Sanity checks with helpful messages
+    if (calories < 0 || protein < 0 || carbs < 0 || sugar < 0) {
+        alert('⚠️ Values cannot be negative!\n\nPlease enter positive numbers.');
+        return;
     }
     
-    // Clear inputs
-    document.getElementById('caloriesInput').value = '';
-    document.getElementById('proteinInput').value = '';
-    document.getElementById('carbsInput').value = '';
-    document.getElementById('sugarInput').value = '';
+    if (calories > 5000) {
+        confirmDialog(
+            'That\'s a lot of calories! (over 5000)\n\nAre you sure this is correct?',
+            () => saveEntry(),
+            () => document.getElementById('caloriesInput').focus()
+        );
+        return;
+    }
     
-    // Reload data
-    loadNutritionData();
-    updateGoalProgress();
+    if (protein > 300) {
+        confirmDialog(
+            'That\'s a lot of protein! (over 300g)\n\nAre you sure this is correct?',
+            () => saveEntry(),
+            () => document.getElementById('proteinInput').focus()
+        );
+        return;
+    }
     
-    // Show success feedback
-    showSuccessMessage('Entry added successfully!');
+    // If values look reasonable, save directly
+    saveEntry();
+    
+    function saveEntry() {
+        const entry = {
+            id: Date.now(),
+            date: new Date().toISOString(),
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            sugar: sugar
+        };
+        
+        // Get current user's entries
+        const storageKey = `nutrition_${currentUser.email}`;
+        const entries = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        
+        entries.push(entry);
+        localStorage.setItem(storageKey, JSON.stringify(entries));
+        
+        // Sync to Firebase if available
+        if (isFirebaseReady() && currentUser.uid) {
+            firebase.database().ref('users/' + currentUser.uid + '/nutrition/' + entry.id).set(entry);
+        }
+        
+        // Clear inputs with animation
+        const inputs = ['caloriesInput', 'proteinInput', 'carbsInput', 'sugarInput'];
+        inputs.forEach(id => {
+            const input = document.getElementById(id);
+            input.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                input.value = '';
+                input.style.transform = 'scale(1)';
+            }, 100);
+        });
+        
+        // Reload data
+        loadNutritionData();
+        updateGoalProgress();
+        
+        // Show success feedback with celebration
+        celebrateSuccess('Meal Tracked! 🎯');
+        
+        // Update meal suggestions if on goals tab
+        if (typeof generateMealSuggestions === 'function') {
+            setTimeout(() => generateMealSuggestions(), 500);
+        }
+    }
 }
 
 // Load and display nutrition data
@@ -184,7 +233,17 @@ function loadNutritionData() {
     const recentEntries = entries.slice(-10).reverse();
     
     if (recentEntries.length === 0) {
-        entriesList.innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 2rem;">No entries yet. Start tracking your nutrition!</p>';
+        entriesList.innerHTML = `
+            <div style="text-align: center; padding: 3rem 2rem; color: var(--color-text-secondary);">
+                <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.5;">🍽️</div>
+                <h3 style="color: var(--color-text); margin-bottom: 0.5rem; font-size: 1.5rem;">No entries yet!</h3>
+                <p style="margin-bottom: 2rem; line-height: 1.6;">Start tracking your nutrition by adding your first meal above.</p>
+                <div style="background: rgba(0, 255, 136, 0.05); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--color-primary);">
+                    <strong style="color: var(--color-primary);">💡 Pro Tip:</strong>
+                    <p style="margin: 0.5rem 0 0 0;">Enter the macros from your food's nutrition label. Most packaged foods show calories, protein, carbs, and sugar!</p>
+                </div>
+            </div>
+        `;
     } else {
         entriesList.innerHTML = recentEntries.map(entry => {
             const entryDate = new Date(entry.date);
@@ -207,7 +266,17 @@ function loadNutritionData() {
                 </div>
             `;
         }).join('');
+        
+        // Show helpful tip for first-time users
+        if (entries.length === 1) {
+            setTimeout(() => {
+                showFirstTimeTip('first_entry', 'Great start! Keep tracking to see your progress over time 📊', 5000);
+            }, 1000);
+        }
     }
+    
+    // Update goal progress if goals are set
+    updateGoalProgress();
 }
 
 // Clear today's entries
@@ -301,12 +370,15 @@ function loadGoals() {
 
 // Display goals in UI
 function displayGoals(goals) {
+    const hasAnyGoals = goals.calories || goals.protein || goals.carbs || goals.sugar;
+    
     // Update display
     if (goals.calories) {
         document.getElementById('displayGoalCalories').textContent = goals.calories;
         document.getElementById('goalCalories').value = goals.calories;
     } else {
         document.getElementById('displayGoalCalories').textContent = 'Not Set';
+        document.getElementById('goalCalories').value = '';
     }
     
     if (goals.protein) {
@@ -314,6 +386,7 @@ function displayGoals(goals) {
         document.getElementById('goalProtein').value = goals.protein;
     } else {
         document.getElementById('displayGoalProtein').textContent = 'Not Set';
+        document.getElementById('goalProtein').value = '';
     }
     
     if (goals.carbs) {
@@ -321,6 +394,7 @@ function displayGoals(goals) {
         document.getElementById('goalCarbs').value = goals.carbs;
     } else {
         document.getElementById('displayGoalCarbs').textContent = 'Not Set';
+        document.getElementById('goalCarbs').value = '';
     }
     
     if (goals.sugar) {
@@ -328,6 +402,28 @@ function displayGoals(goals) {
         document.getElementById('goalSugar').value = goals.sugar;
     } else {
         document.getElementById('displayGoalSugar').textContent = 'Not Set';
+        document.getElementById('goalSugar').value = '';
+    }
+    
+    // Show macro breakdown if goals exist
+    const macroBreakdown = document.getElementById('macroBreakdown');
+    if (macroBreakdown && hasAnyGoals && goals.calories && goals.protein && goals.carbs) {
+        macroBreakdown.style.display = 'block';
+        
+        // Calculate percentages
+        const proteinCals = (goals.protein || 0) * 4;
+        const carbsCals = (goals.carbs || 0) * 4;
+        const fatCals = (goals.calories || 0) - proteinCals - carbsCals;
+        
+        const proteinPct = Math.round((proteinCals / goals.calories) * 100);
+        const carbsPct = Math.round((carbsCals / goals.calories) * 100);
+        const fatsPct = 100 - proteinPct - carbsPct;
+        
+        document.getElementById('proteinPercentage').textContent = proteinPct + '%';
+        document.getElementById('carbsPercentage').textContent = carbsPct + '%';
+        document.getElementById('fatsPercentage').textContent = fatsPct + '%';
+    } else if (macroBreakdown) {
+        macroBreakdown.style.display = 'none';
     }
 }
 
@@ -1370,3 +1466,31 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Initialize app when DOM is ready
+function initializeApp() {
+    const currentUser = getCurrentUser();
+    
+    if (currentUser) {
+        // User is logged in, load their data
+        console.log('🔄 Initializing app for user:', currentUser.email);
+        
+        // Load nutrition data for active tab
+        setTimeout(() => {
+            loadNutritionData();
+            updateGoalProgress();
+        }, 100);
+        
+        // Display profile if exists
+        if (typeof displayProfile === 'function') {
+            setTimeout(() => displayProfile(), 200);
+        }
+    }
+}
+
+// Run initialization when page loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}
