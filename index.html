@@ -136,8 +136,29 @@
             <!-- Nutrition Goals Tab -->
             <div id="goalsTab" class="tab-content">
                 <div class="section-header">
-                    <h2>Nutrition Goals</h2>
+                    <h2>Nutrition Goals<span id="personalizedBadgeNutrition"></span></h2>
                     <p class="section-subtitle">Set your daily targets and track progress</p>
+                </div>
+
+                <!-- Profile Banner -->
+                <div id="nutritionProfileBanner" style="display: none;" class="profile-banner">
+                    <div class="profile-info">
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Age</span>
+                            <span class="profile-stat-value" id="profileAge">--</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Weight</span>
+                            <span class="profile-stat-value" id="profileWeight">--</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Goal</span>
+                            <span class="profile-stat-value" id="profileGoal">--</span>
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-edit-profile" onclick="editProfile()">✏️ Update Profile</button>
+                    </div>
                 </div>
 
                 <!-- Macro Calculator Tool -->
@@ -396,8 +417,40 @@
                 <!-- Meal Planning Suggestions -->
                 <div class="meal-suggestions">
                     <h3>💡 Smart Meal Suggestions</h3>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">Based on your remaining macros for today</p>
                     <div class="suggestions-grid" id="mealSuggestions">
                         <!-- Populated by JavaScript based on remaining macros -->
+                    </div>
+                </div>
+
+                <!-- Weekly Meal Planner -->
+                <div class="meal-planner-section">
+                    <div class="section-header-inline">
+                        <h3>📅 Weekly Meal Planner</h3>
+                        <button onclick="generateWeeklyMealPlan()" class="btn-secondary">Generate Meal Plan</button>
+                    </div>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">
+                        AI-powered meal planning based on your nutrition goals. Get a full week of balanced meals instantly.
+                    </p>
+                    <div id="weeklyMealPlan" class="weekly-meal-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Macro-Friendly Recipe Database -->
+                <div class="recipe-database">
+                    <h3>🍽️ Macro-Friendly Recipe Database</h3>
+                    <div class="recipe-filters">
+                        <button class="filter-btn active" onclick="filterRecipes('all')">All Recipes</button>
+                        <button class="filter-btn" onclick="filterRecipes('breakfast')">Breakfast</button>
+                        <button class="filter-btn" onclick="filterRecipes('lunch')">Lunch</button>
+                        <button class="filter-btn" onclick="filterRecipes('dinner')">Dinner</button>
+                        <button class="filter-btn" onclick="filterRecipes('snacks')">Snacks</button>
+                        <button class="filter-btn" onclick="filterRecipes('high-protein')">High Protein</button>
+                        <button class="filter-btn" onclick="filterRecipes('low-carb')">Low Carb</button>
+                    </div>
+                    <div id="recipeGrid" class="recipe-grid">
+                        <!-- Populated by JavaScript -->
                     </div>
                 </div>
 
@@ -420,8 +473,29 @@
             <!-- Workout Plans Tab -->
             <div id="workoutsTab" class="tab-content">
                 <div class="section-header">
-                    <h2>Workout Plans</h2>
+                    <h2>Workout Plans<span id="personalizedBadgeWorkout"></span></h2>
                     <p class="section-subtitle">Your complete Push/Pull/Legs training program</p>
+                </div>
+
+                <!-- Profile Banner -->
+                <div id="workoutProfileBanner" style="display: none;" class="profile-banner">
+                    <div class="profile-info">
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Fitness Level</span>
+                            <span class="profile-stat-value" id="profileFitnessLevel">--</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Workout Days</span>
+                            <span class="profile-stat-value" id="profileWorkoutDays">--</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Equipment</span>
+                            <span class="profile-stat-value" id="profileEquipment">--</span>
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-edit-profile" onclick="editProfile()">✏️ Update Profile</button>
+                    </div>
                 </div>
 
                 <!-- Program Overview -->
@@ -496,7 +570,59 @@
                     </div>
                 </div>
 
-                <!-- Workout Cards -->
+                <!-- Workout Customization -->
+                <div class="workout-customization">
+                    <h3>⚙️ Customize Your Program</h3>
+                    <div class="customization-grid">
+                        <div class="custom-card">
+                            <h4>Training Frequency</h4>
+                            <select id="trainingFrequency" onchange="updateWorkoutSchedule()">
+                                <option value="3">3 Days/Week (Beginner)</option>
+                                <option value="4">4 Days/Week (Intermediate)</option>
+                                <option value="5">5 Days/Week (Intermediate+)</option>
+                                <option value="6" selected>6 Days/Week (Advanced)</option>
+                            </select>
+                        </div>
+                        <div class="custom-card">
+                            <h4>Session Duration</h4>
+                            <select id="sessionDuration">
+                                <option value="45">45 minutes (Condensed)</option>
+                                <option value="60" selected>60 minutes (Standard)</option>
+                                <option value="90">90 minutes (Extended)</option>
+                            </select>
+                        </div>
+                        <div class="custom-card">
+                            <h4>Primary Goal</h4>
+                            <select id="workoutGoal">
+                                <option value="strength">Strength Focus</option>
+                                <option value="hypertrophy" selected>Muscle Building</option>
+                                <option value="endurance">Muscular Endurance</option>
+                                <option value="athletic">Athletic Performance</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rest Timer Tool -->
+                <div class="rest-timer-section">
+                    <h3>⏱️ Built-In Rest Timer</h3>
+                    <div class="timer-container">
+                        <div class="timer-display">
+                            <span id="timerMinutes">02</span>:<span id="timerSeconds">00</span>
+                        </div>
+                        <div class="timer-controls">
+                            <button onclick="setTimer(60)" class="btn-timer-preset">1:00</button>
+                            <button onclick="setTimer(90)" class="btn-timer-preset">1:30</button>
+                            <button onclick="setTimer(120)" class="btn-timer-preset">2:00</button>
+                            <button onclick="setTimer(180)" class="btn-timer-preset">3:00</button>
+                        </div>
+                        <div class="timer-buttons">
+                            <button onclick="startTimer()" class="btn-timer-start">Start</button>
+                            <button onclick="pauseTimer()" class="btn-timer-pause">Pause</button>
+                            <button onclick="resetTimer()" class="btn-timer-reset">Reset</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="workouts-grid">
                     <!-- Push Day -->
                     <div class="workout-card">
@@ -865,6 +991,136 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Personal Records Tracker -->
+                <div class="pr-tracker-section">
+                    <h3>🏆 Personal Records</h3>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">
+                        Track your strength progress across key lifts
+                    </p>
+                    <div class="pr-grid">
+                        <div class="pr-card">
+                            <div class="pr-header">
+                                <h4>Bench Press</h4>
+                                <button onclick="openPRModal('bench')" class="btn-add-pr">+ Add PR</button>
+                            </div>
+                            <div class="pr-stats">
+                                <div class="pr-stat">
+                                    <span class="pr-label">1RM</span>
+                                    <span class="pr-value" id="bench-1rm">--</span>
+                                </div>
+                                <div class="pr-stat">
+                                    <span class="pr-label">5RM</span>
+                                    <span class="pr-value" id="bench-5rm">--</span>
+                                </div>
+                            </div>
+                            <div class="pr-history" id="bench-history"></div>
+                        </div>
+                        <div class="pr-card">
+                            <div class="pr-header">
+                                <h4>Squat</h4>
+                                <button onclick="openPRModal('squat')" class="btn-add-pr">+ Add PR</button>
+                            </div>
+                            <div class="pr-stats">
+                                <div class="pr-stat">
+                                    <span class="pr-label">1RM</span>
+                                    <span class="pr-value" id="squat-1rm">--</span>
+                                </div>
+                                <div class="pr-stat">
+                                    <span class="pr-label">5RM</span>
+                                    <span class="pr-value" id="squat-5rm">--</span>
+                                </div>
+                            </div>
+                            <div class="pr-history" id="squat-history"></div>
+                        </div>
+                        <div class="pr-card">
+                            <div class="pr-header">
+                                <h4>Deadlift</h4>
+                                <button onclick="openPRModal('deadlift')" class="btn-add-pr">+ Add PR</button>
+                            </div>
+                            <div class="pr-stats">
+                                <div class="pr-stat">
+                                    <span class="pr-label">1RM</span>
+                                    <span class="pr-value" id="deadlift-1rm">--</span>
+                                </div>
+                                <div class="pr-stat">
+                                    <span class="pr-label">5RM</span>
+                                    <span class="pr-value" id="deadlift-5rm">--</span>
+                                </div>
+                            </div>
+                            <div class="pr-history" id="deadlift-history"></div>
+                        </div>
+                        <div class="pr-card">
+                            <div class="pr-header">
+                                <h4>Overhead Press</h4>
+                                <button onclick="openPRModal('ohp')" class="btn-add-pr">+ Add PR</button>
+                            </div>
+                            <div class="pr-stats">
+                                <div class="pr-stat">
+                                    <span class="pr-label">1RM</span>
+                                    <span class="pr-value" id="ohp-1rm">--</span>
+                                </div>
+                                <div class="pr-stat">
+                                    <span class="pr-label">5RM</span>
+                                    <span class="pr-value" id="ohp-5rm">--</span>
+                                </div>
+                            </div>
+                            <div class="pr-history" id="ohp-history"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Body Measurements Tracker -->
+                <div class="measurements-section">
+                    <h3>📏 Body Measurements</h3>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">
+                        Track your physique progress beyond just weight
+                    </p>
+                    <div class="measurements-grid">
+                        <div class="measurement-input-card">
+                            <h4>Log New Measurements</h4>
+                            <div class="measurement-inputs">
+                                <div class="input-group">
+                                    <label>Weight (lbs)</label>
+                                    <input type="number" id="measureWeight" placeholder="170" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Body Fat % (optional)</label>
+                                    <input type="number" id="measureBodyFat" placeholder="15" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Chest (inches)</label>
+                                    <input type="number" id="measureChest" placeholder="40" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Waist (inches)</label>
+                                    <input type="number" id="measureWaist" placeholder="32" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Arms (inches)</label>
+                                    <input type="number" id="measureArms" placeholder="15" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Legs (inches)</label>
+                                    <input type="number" id="measureLegs" placeholder="24" step="0.1">
+                                </div>
+                                <button onclick="saveMeasurements()" class="btn-primary">Save Measurements</button>
+                            </div>
+                        </div>
+                        <div class="measurement-display-card">
+                            <h4>Progress Tracking</h4>
+                            <div id="measurementProgress" class="measurement-stats">
+                                <p style="color: var(--color-text-secondary);">No measurements recorded yet. Start tracking to see your progress!</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="measurement-history">
+                        <h4>Measurement History</h4>
+                        <div id="measurementHistory" class="history-timeline">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
             </div>
             <div id="workoutsTab" class="tab-content">
                 <div class="section-header">
@@ -1081,59 +1337,80 @@
                         </div>
                         <ul class="features-list">
                             <li>✓ Daily nutrition tracking</li>
-                            <li>✓ Calories, protein, carbs, sugar</li>
-                            <li>✓ Local data storage</li>
-                            <li>✗ Nutrition goals</li>
+                            <li>✓ 4 macro tracking (cal, protein, carbs, sugar)</li>
+                            <li>✓ Cloud data sync</li>
+                            <li>✓ Recent entries history</li>
+                            <li>✗ Macro calculator</li>
+                            <li>✗ Nutrition goals & progress</li>
+                            <li>✗ Weekly trends & analytics</li>
+                            <li>✗ Meal planning</li>
+                            <li>✗ Recipe database</li>
                             <li>✗ Workout plans</li>
                         </ul>
                         <button class="btn-secondary" disabled>Current Plan</button>
                     </div>
 
                     <div class="pricing-card featured">
-                        <div class="pricing-badge">Most Popular</div>
+                        <div class="pricing-badge">Best for Goals</div>
                         <div class="pricing-header pro">
                             <h3>Basic Pack</h3>
                             <div class="price">$5</div>
+                            <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-top: 0.5rem;">One-time payment</div>
                         </div>
                         <ul class="features-list">
                             <li>✓ Everything in Free</li>
-                            <li>✓ Nutrition goal setting</li>
-                            <li>✓ Progress tracking</li>
-                            <li>✓ Target calories & protein</li>
-                            <li>✗ Workout plans</li>
+                            <li>✓ <strong>AI Macro Calculator</strong></li>
+                            <li>✓ Complete nutrition goals (all 4 macros)</li>
+                            <li>✓ Real-time progress tracking</li>
+                            <li>✓ 7-day nutrition trends</li>
+                            <li>✓ Weekly adherence tracking</li>
+                            <li>✓ Smart meal suggestions</li>
+                            <li>✓ <strong>Weekly meal planner</strong></li>
+                            <li>✓ <strong>12+ macro-friendly recipes</strong></li>
+                            <li>✗ Workout plans & tracking</li>
                         </ul>
-                        <a href="https://square.link/u/EaNUJ0gy" class="btn-primary">Upgrade Now</a>
+                        <a href="https://square.link/u/EaNUJ0gy" class="btn-primary">Upgrade for $5</a>
                     </div>
 
                     <div class="pricing-card">
                         <div class="pricing-header standard">
                             <h3>Standard Pack</h3>
                             <div class="price">$10</div>
+                            <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-top: 0.5rem;">One-time payment</div>
                         </div>
                         <ul class="features-list">
                             <li>✓ Everything in Basic</li>
-                            <li>✓ Enhanced goal tracking</li>
-                            <li>✓ Advanced analytics</li>
-                            <li>✓ Priority support</li>
-                            <li>✗ Workout plans</li>
+                            <li>✓ Enhanced goal analytics</li>
+                            <li>✓ Advanced progress visualization</li>
+                            <li>✓ Consistency streak tracking</li>
+                            <li>✓ Priority email support</li>
+                            <li>✓ Early access to new features</li>
+                            <li>✗ Complete workout system</li>
                         </ul>
-                        <a href="https://square.link/u/0cNYptZb" class="btn-primary">Upgrade Now</a>
+                        <a href="https://square.link/u/0cNYptZb" class="btn-primary">Upgrade for $10</a>
                     </div>
 
                     <div class="pricing-card featured">
-                        <div class="pricing-badge">Best Value</div>
+                        <div class="pricing-badge">🏆 Complete System</div>
                         <div class="pricing-header elite">
                             <h3>Premium Pack</h3>
                             <div class="price">$20</div>
+                            <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-top: 0.5rem;">One-time payment</div>
                         </div>
                         <ul class="features-list">
                             <li>✓ Everything in Standard</li>
-                            <li>✓ Complete workout plans</li>
-                            <li>✓ Push, Pull, Legs programs</li>
-                            <li>✓ Exercise recommendations</li>
-                            <li>✓ Full feature access</li>
+                            <li>✓ <strong>Complete PPL workout program</strong></li>
+                            <li>✓ 21 exercises with form guides</li>
+                            <li>✓ <strong>Weekly workout tracker</strong></li>
+                            <li>✓ <strong>Built-in rest timer</strong></li>
+                            <li>✓ <strong>Personal records tracker</strong></li>
+                            <li>✓ <strong>Body measurements tracker</strong></li>
+                            <li>✓ Workout customization tools</li>
+                            <li>✓ Training schedules (3-6 days/week)</li>
+                            <li>✓ Progressive overload guidance</li>
+                            <li>✓ <strong>COMPLETE fitness system</strong></li>
                         </ul>
-                        <a href="https://square.link/u/6Y9uWLVv" class="btn-primary">Upgrade Now</a>
+                        <a href="https://square.link/u/6Y9uWLVv" class="btn-primary">Get Full Access - $20</a>
                     </div>
                 </div>
 
@@ -1161,5 +1438,6 @@
     <script src="payments.js"></script>
     <script src="admin.js"></script>
     <script src="firebase-config.js"></script>
+    <script src="personalization.js"></script>
 </body>
 </html>
