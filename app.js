@@ -45,10 +45,19 @@ function switchTab(tabName) {
         setTimeout(() => {
             calculateWeeklyTrends();
             generateMealSuggestions();
+            loadRecipes();
+            if (typeof displayProfile === 'function') {
+                displayProfile();
+            }
         }, 100);
     } else if (tabName === 'workouts') {
         setTimeout(() => {
             loadWorkoutWeek();
+            loadPRs();
+            loadMeasurements();
+            if (typeof displayProfile === 'function') {
+                displayProfile();
+            }
         }, 100);
     }
 }
@@ -657,6 +666,472 @@ function calculateConsistencyStreak() {
     }
     
     return streak;
+}
+
+// Meal Suggestions Based on Remaining Macros
+
+function generateMealSuggestions() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    // Get goals and today's totals
+    const goalsKey = `goals_${currentUser.email}`;
+    const goals = JSON.parse(localStorage.getItem(goalsKey) || '{}');
+    
+    if (!goals.calories) return;
+    
+    const nutritionKey = `nutrition_${currentUser.email}`;
+    const entries = JSON.parse(localStorage.getItem(nutritionKey) || '[]');
+    
+    const today = new Date().toDateString();
+    const todayEntries = entries.filter(entry => 
+        new Date(entry.date).toDateString() === today
+    );
+    
+    const totals = todayEntries.reduce((acc, entry) => ({
+        calories: acc.calories + entry.calories,
+        protein: acc.protein + entry.protein,
+        carbs: acc.carbs + entry.carbs
+    }), { calories: 0, protein: 0, carbs: 0 });
+    
+    const remaining = {
+        calories: goals.calories - totals.calories,
+        protein: goals.protein - totals.protein,
+        carbs: (goals.carbs || 0) - totals.carbs
+    };
+    
+    // Enhanced meal database
+    const meals = [
+        { name: 'Grilled Chicken Breast', icon: '🍗', calories: 165, protein: 31, carbs: 0, fat: 4 },
+        { name: 'Greek Yogurt & Berries', icon: '🥣', calories: 150, protein: 15, carbs: 20, fat: 2 },
+        { name: 'Salmon Fillet', icon: '🐟', calories: 280, protein: 40, carbs: 0, fat: 13 },
+        { name: 'Protein Shake', icon: '🥤', calories: 120, protein: 25, carbs: 3, fat: 1 },
+        { name: 'Sweet Potato', icon: '🍠', calories: 180, protein: 4, carbs: 41, fat: 0 },
+        { name: 'Brown Rice Bowl', icon: '🍚', calories: 220, protein: 5, carbs: 46, fat: 2 },
+        { name: 'Egg White Omelet', icon: '🍳', calories: 140, protein: 24, carbs: 2, fat: 3 },
+        { name: 'Lean Beef Steak', icon: '🥩', calories: 250, protein: 36, carbs: 0, fat: 11 },
+        { name: 'Quinoa Salad', icon: '🥗', calories: 200, protein: 8, carbs: 30, fat: 6 },
+        { name: 'Tuna Sandwich', icon: '🥪', calories: 300, protein: 25, carbs: 35, fat: 7 },
+        { name: 'Protein Pancakes', icon: '🥞', calories: 280, protein: 22, carbs: 32, fat: 6 },
+        { name: 'Chicken & Rice', icon: '🍛', calories: 450, protein: 42, carbs: 52, fat: 8 }
+    ];
+    
+    // Find best matches
+    const suggestions = meals
+        .map(meal => {
+            const calDiff = Math.abs(meal.calories - remaining.calories);
+            const proteinDiff = Math.abs(meal.protein - remaining.protein);
+            const score = -(calDiff + proteinDiff * 2);
+            return { ...meal, score };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+    
+    const container = document.getElementById('mealSuggestions');
+    if (!container) return;
+    
+    if (remaining.calories <= 100) {
+        container.innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 2rem;">You\'re at your calorie goal! Great job! 🎯</p>';
+        return;
+    }
+    
+    container.innerHTML = suggestions.map(meal => `
+        <div class="suggestion-card">
+            <div class="suggestion-header">
+                <span class="suggestion-icon">${meal.icon}</span>
+                <span class="suggestion-title">${meal.name}</span>
+            </div>
+            <div class="suggestion-macros">
+                <div class="suggestion-macro">
+                    <strong>${meal.calories}</strong>
+                    <span>cal</span>
+                </div>
+                <div class="suggestion-macro">
+                    <strong>${meal.protein}g</strong>
+                    <span>protein</span>
+                </div>
+                <div class="suggestion-macro">
+                    <strong>${meal.carbs}g</strong>
+                    <span>carbs</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Weekly Meal Plan Generator
+
+function generateWeeklyMealPlan() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    const goalsKey = `goals_${currentUser.email}`;
+    const goals = JSON.parse(localStorage.getItem(goalsKey) || '{}');
+    
+    if (!goals.calories) {
+        alert('Please set your nutrition goals first!');
+        return;
+    }
+    
+    const targetCals = goals.calories;
+    const targetProtein = goals.protein;
+    
+    const mealTemplates = {
+        breakfast: [
+            { name: 'Protein Oatmeal with Berries', cals: Math.round(targetCals * 0.25), protein: Math.round(targetProtein * 0.25) },
+            { name: 'Egg White Scramble with Toast', cals: Math.round(targetCals * 0.25), protein: Math.round(targetProtein * 0.3) },
+            { name: 'Greek Yogurt Parfait', cals: Math.round(targetCals * 0.2), protein: Math.round(targetProtein * 0.25) },
+            { name: 'Protein Pancakes with Fruit', cals: Math.round(targetCals * 0.28), protein: Math.round(targetProtein * 0.27) }
+        ],
+        lunch: [
+            { name: 'Grilled Chicken Salad', cals: Math.round(targetCals * 0.35), protein: Math.round(targetProtein * 0.4) },
+            { name: 'Turkey Wrap with Veggies', cals: Math.round(targetCals * 0.32), protein: Math.round(targetProtein * 0.35) },
+            { name: 'Salmon Bowl with Quinoa', cals: Math.round(targetCals * 0.38), protein: Math.round(targetProtein * 0.42) },
+            { name: 'Lean Beef Stir-Fry', cals: Math.round(targetCals * 0.36), protein: Math.round(targetProtein * 0.38) }
+        ],
+        dinner: [
+            { name: 'Chicken Breast with Sweet Potato', cals: Math.round(targetCals * 0.35), protein: Math.round(targetProtein * 0.35) },
+            { name: 'Fish Tacos with Rice', cals: Math.round(targetCals * 0.33), protein: Math.round(targetProtein * 0.32) },
+            { name: 'Lean Steak with Vegetables', cals: Math.round(targetCals * 0.37), protein: Math.round(targetProtein * 0.38) },
+            { name: 'Turkey Meatballs with Pasta', cals: Math.round(targetCals * 0.35), protein: Math.round(targetProtein * 0.33) }
+        ]
+    };
+    
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const plan = days.map((day, i) => {
+        const breakfast = mealTemplates.breakfast[i % mealTemplates.breakfast.length];
+        const lunch = mealTemplates.lunch[i % mealTemplates.lunch.length];
+        const dinner = mealTemplates.dinner[i % mealTemplates.dinner.length];
+        
+        const totalCals = breakfast.cals + lunch.cals + dinner.cals;
+        const totalProtein = breakfast.protein + lunch.protein + dinner.protein;
+        
+        return { day, breakfast, lunch, dinner, totalCals, totalProtein };
+    });
+    
+    const container = document.getElementById('weeklyMealPlan');
+    container.innerHTML = plan.map(dayPlan => `
+        <div class="meal-day-card">
+            <div class="meal-day-header">
+                <span class="meal-day-title">${dayPlan.day}</span>
+                <span class="meal-day-macros">${dayPlan.totalCals} cal • ${dayPlan.totalProtein}g protein</span>
+            </div>
+            <div class="meal-slots">
+                <div class="meal-slot">
+                    <div class="meal-slot-header">🌅 Breakfast</div>
+                    <div class="meal-slot-content">${dayPlan.breakfast.name} - ${dayPlan.breakfast.cals} cal, ${dayPlan.breakfast.protein}g protein</div>
+                </div>
+                <div class="meal-slot">
+                    <div class="meal-slot-header">☀️ Lunch</div>
+                    <div class="meal-slot-content">${dayPlan.lunch.name} - ${dayPlan.lunch.cals} cal, ${dayPlan.lunch.protein}g protein</div>
+                </div>
+                <div class="meal-slot">
+                    <div class="meal-slot-header">🌙 Dinner</div>
+                    <div class="meal-slot-content">${dayPlan.dinner.name} - ${dayPlan.dinner.cals} cal, ${dayPlan.dinner.protein}g protein</div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    showSuccessMessage('7-day meal plan generated!');
+}
+
+// Recipe Database
+
+const recipeDatabase = [
+    { id: 1, name: 'Chicken & Broccoli', icon: '🥦', category: 'lunch', tags: ['high-protein'], cals: 380, protein: 45, carbs: 25, fat: 12, description: 'Simple, clean, and protein-packed' },
+    { id: 2, name: 'Protein Smoothie Bowl', icon: '🥤', category: 'breakfast', tags: ['high-protein'], cals: 320, protein: 35, carbs: 28, fat: 8, description: 'Refreshing and filling breakfast' },
+    { id: 3, name: 'Salmon & Asparagus', icon: '🐟', category: 'dinner', tags: ['high-protein'], cals: 420, protein: 48, carbs: 12, fat: 18, description: 'Omega-3 rich dinner option' },
+    { id: 4, name: 'Egg White Omelet', icon: '🍳', category: 'breakfast', tags: ['high-protein', 'low-carb'], cals: 180, protein: 28, carbs: 6, fat: 4, description: 'Perfect morning protein boost' },
+    { id: 5, name: 'Turkey Chili', icon: '🍲', category: 'dinner', tags: ['high-protein'], cals: 350, protein: 38, carbs: 32, fat: 8, description: 'Hearty and satisfying' },
+    { id: 6, name: 'Greek Yogurt Parfait', icon: '🥣', category: 'snacks', tags: ['high-protein'], cals: 220, protein: 22, carbs: 28, fat: 3, description: 'Great pre or post workout' },
+    { id: 7, name: 'Cauliflower Rice Bowl', icon: '🍚', category: 'lunch', tags: ['low-carb'], cals: 280, protein: 32, carbs: 18, fat: 10, description: 'Low-carb lunch option' },
+    { id: 8, name: 'Protein Pancakes', icon: '🥞', category: 'breakfast', tags: ['high-protein'], cals: 310, protein: 28, carbs: 35, fat: 7, description: 'Weekend breakfast treat' },
+    { id: 9, name: 'Tuna Lettuce Wraps', icon: '🥬', category: 'lunch', tags: ['low-carb', 'high-protein'], cals: 200, protein: 30, carbs: 8, fat: 6, description: 'Light and refreshing lunch' },
+    { id: 10, name: 'Beef & Veggie Stir-Fry', icon: '🥘', category: 'dinner', tags: ['high-protein'], cals: 450, protein: 42, carbs: 35, fat: 15, description: 'Quick weeknight dinner' },
+    { id: 11, name: 'Cottage Cheese Bowl', icon: '🥛', category: 'snacks', tags: ['high-protein', 'low-carb'], cals: 160, protein: 24, carbs: 10, fat: 4, description: 'Perfect before bed snack' },
+    { id: 12, name: 'Chicken Fajitas', icon: '🌮', category: 'dinner', tags: ['high-protein'], cals: 420, protein: 45, carbs: 38, fat: 12, description: 'Flavorful and filling' }
+];
+
+function loadRecipes() {
+    displayRecipes(recipeDatabase);
+}
+
+function filterRecipes(filter) {
+    // Update active filter button
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    let filtered = recipeDatabase;
+    
+    if (filter !== 'all') {
+        filtered = recipeDatabase.filter(recipe => 
+            recipe.category === filter || recipe.tags.includes(filter)
+        );
+    }
+    
+    displayRecipes(filtered);
+}
+
+function displayRecipes(recipes) {
+    const container = document.getElementById('recipeGrid');
+    if (!container) return;
+    
+    container.innerHTML = recipes.map(recipe => `
+        <div class="recipe-card" onclick="showRecipeDetails(${recipe.id})">
+            <div class="recipe-image">${recipe.icon}</div>
+            <div class="recipe-content">
+                <div class="recipe-title">${recipe.name}</div>
+                <div class="recipe-description">${recipe.description}</div>
+                <div class="recipe-macros-row">
+                    <div class="recipe-macro-item">
+                        <span class="recipe-macro-value">${recipe.cals}</span>
+                        <span class="recipe-macro-label">cal</span>
+                    </div>
+                    <div class="recipe-macro-item">
+                        <span class="recipe-macro-value">${recipe.protein}g</span>
+                        <span class="recipe-macro-label">protein</span>
+                    </div>
+                    <div class="recipe-macro-item">
+                        <span class="recipe-macro-value">${recipe.carbs}g</span>
+                        <span class="recipe-macro-label">carbs</span>
+                    </div>
+                    <div class="recipe-macro-item">
+                        <span class="recipe-macro-value">${recipe.fat}g</span>
+                        <span class="recipe-macro-label">fat</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showRecipeDetails(recipeId) {
+    const recipe = recipeDatabase.find(r => r.id === recipeId);
+    if (!recipe) return;
+    
+    alert(`${recipe.name}\n\nMacros:\n• ${recipe.cals} calories\n• ${recipe.protein}g protein\n• ${recipe.carbs}g carbs\n• ${recipe.fat}g fat\n\n${recipe.description}\n\nDetailed recipe instructions would appear here in a modal!`);
+}
+
+// Rest Timer
+
+let timerInterval = null;
+let timerSeconds = 120;
+let timerRunning = false;
+
+function setTimer(seconds) {
+    timerSeconds = seconds;
+    updateTimerDisplay();
+}
+
+function startTimer() {
+    if (timerRunning) return;
+    
+    timerRunning = true;
+    timerInterval = setInterval(() => {
+        if (timerSeconds > 0) {
+            timerSeconds--;
+            updateTimerDisplay();
+        } else {
+            pauseTimer();
+            playTimerAlert();
+        }
+    }, 1000);
+}
+
+function pauseTimer() {
+    timerRunning = false;
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+}
+
+function resetTimer() {
+    pauseTimer();
+    timerSeconds = 120;
+    updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+    const minutes = Math.floor(timerSeconds / 60);
+    const seconds = timerSeconds % 60;
+    document.getElementById('timerMinutes').textContent = String(minutes).padStart(2, '0');
+    document.getElementById('timerSeconds').textContent = String(seconds).padStart(2, '0');
+}
+
+function playTimerAlert() {
+    alert('⏰ Rest period complete! Time to lift!');
+}
+
+// Personal Records Tracker
+
+function openPRModal(exercise) {
+    const weight = prompt(`Enter your new PR weight for ${exercise} (in lbs):`);
+    const reps = prompt('How many reps?');
+    
+    if (!weight || !reps) return;
+    
+    savePR(exercise, parseInt(weight), parseInt(reps));
+}
+
+function savePR(exercise, weight, reps) {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    const prKey = `prs_${currentUser.email}`;
+    const prs = JSON.parse(localStorage.getItem(prKey) || '{}');
+    
+    if (!prs[exercise]) {
+        prs[exercise] = [];
+    }
+    
+    prs[exercise].push({
+        weight: weight,
+        reps: reps,
+        date: new Date().toISOString(),
+        oneRM: Math.round(weight * (1 + reps / 30)) // Epley formula
+    });
+    
+    localStorage.setItem(prKey, JSON.stringify(prs));
+    
+    // Sync to Firebase
+    if (isFirebaseReady() && currentUser.uid) {
+        firebase.database().ref('users/' + currentUser.uid + '/prs').set(prs);
+    }
+    
+    loadPRs();
+    showSuccessMessage(`New PR logged for ${exercise}!`);
+}
+
+function loadPRs() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    const prKey = `prs_${currentUser.email}`;
+    const prs = JSON.parse(localStorage.getItem(prKey) || '{}');
+    
+    ['bench', 'squat', 'deadlift', 'ohp'].forEach(exercise => {
+        const exercisePRs = prs[exercise] || [];
+        if (exercisePRs.length > 0) {
+            const sorted = exercisePRs.sort((a, b) => b.oneRM - a.oneRM);
+            const best1RM = sorted[0];
+            const best5RM = sorted.find(pr => pr.reps >= 5);
+            
+            document.getElementById(`${exercise}-1rm`).textContent = `${best1RM.weight} lbs`;
+            if (best5RM) {
+                document.getElementById(`${exercise}-5rm`).textContent = `${best5RM.weight} lbs`;
+            }
+        }
+    });
+}
+
+// Body Measurements
+
+function saveMeasurements() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    const measurement = {
+        date: new Date().toISOString(),
+        weight: parseFloat(document.getElementById('measureWeight').value) || null,
+        bodyFat: parseFloat(document.getElementById('measureBodyFat').value) || null,
+        chest: parseFloat(document.getElementById('measureChest').value) || null,
+        waist: parseFloat(document.getElementById('measureWaist').value) || null,
+        arms: parseFloat(document.getElementById('measureArms').value) || null,
+        legs: parseFloat(document.getElementById('measureLegs').value) || null
+    };
+    
+    if (!measurement.weight && !measurement.chest && !measurement.waist) {
+        alert('Please enter at least one measurement');
+        return;
+    }
+    
+    const measureKey = `measurements_${currentUser.email}`;
+    const measurements = JSON.parse(localStorage.getItem(measureKey) || '[]');
+    
+    measurements.push(measurement);
+    localStorage.setItem(measureKey, JSON.stringify(measurements));
+    
+    // Sync to Firebase
+    if (isFirebaseReady() && currentUser.uid) {
+        firebase.database().ref('users/' + currentUser.uid + '/measurements').set(measurements);
+    }
+    
+    // Clear inputs
+    document.getElementById('measureWeight').value = '';
+    document.getElementById('measureBodyFat').value = '';
+    document.getElementById('measureChest').value = '';
+    document.getElementById('measureWaist').value = '';
+    document.getElementById('measureArms').value = '';
+    document.getElementById('measureLegs').value = '';
+    
+    loadMeasurements();
+    showSuccessMessage('Measurements saved!');
+}
+
+function loadMeasurements() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    const measureKey = `measurements_${currentUser.email}`;
+    const measurements = JSON.parse(localStorage.getItem(measureKey) || '[]');
+    
+    if (measurements.length === 0) return;
+    
+    const latest = measurements[measurements.length - 1];
+    const previous = measurements.length > 1 ? measurements[measurements.length - 2] : null;
+    
+    const progressHTML = `
+        ${generateMeasurementStat('Weight', latest.weight, previous?.weight, 'lbs')}
+        ${generateMeasurementStat('Body Fat', latest.bodyFat, previous?.bodyFat, '%')}
+        ${generateMeasurementStat('Chest', latest.chest, previous?.chest, '"')}
+        ${generateMeasurementStat('Waist', latest.waist, previous?.waist, '"')}
+        ${generateMeasurementStat('Arms', latest.arms, previous?.arms, '"')}
+        ${generateMeasurementStat('Legs', latest.legs, previous?.legs, '"')}
+    `;
+    
+    document.getElementById('measurementProgress').innerHTML = progressHTML;
+    
+    // History
+    const historyHTML = measurements.slice(-5).reverse().map(m => {
+        const date = new Date(m.date).toLocaleDateString();
+        return `
+            <div class="timeline-item">
+                <div class="timeline-date">${date}</div>
+                <div class="timeline-data">
+                    ${m.weight ? `Weight: ${m.weight} lbs` : ''}
+                    ${m.chest ? `Chest: ${m.chest}"` : ''}
+                    ${m.waist ? `Waist: ${m.waist}"` : ''}
+                    ${m.arms ? `Arms: ${m.arms}"` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    document.getElementById('measurementHistory').innerHTML = historyHTML;
+}
+
+function generateMeasurementStat(label, current, previous, unit) {
+    if (!current) return '';
+    
+    let changeHTML = '';
+    if (previous && current !== previous) {
+        const diff = current - previous;
+        const changeClass = diff > 0 ? 'positive' : 'negative';
+        const sign = diff > 0 ? '+' : '';
+        changeHTML = `<span class="measurement-change ${changeClass}">${sign}${diff.toFixed(1)}${unit}</span>`;
+    }
+    
+    return `
+        <div class="measurement-stat-item">
+            <span class="measurement-stat-label">${label}</span>
+            <span>
+                <span class="measurement-stat-value">${current}${unit}</span>
+                ${changeHTML}
+            </span>
+        </div>
+    `;
 }
 
 // Meal Suggestions Based on Remaining Macros
