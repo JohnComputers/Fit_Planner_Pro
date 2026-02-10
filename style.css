@@ -1536,11 +1536,737 @@ body::before {
     }
 }
 
+/* Weekly Meal Planner */
+.meal-planner-section {
+    margin-top: 3rem;
+    background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 2rem;
+}
+
+.section-header-inline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.section-header-inline h3 {
+    font-size: 1.75rem;
+    color: var(--color-text);
+    margin: 0;
+}
+
+.weekly-meal-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.meal-day-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.meal-day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--color-border);
+}
+
+.meal-day-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--color-text);
+}
+
+.meal-day-macros {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.meal-slots {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.meal-slot {
+    padding: 0.75rem;
+    background: rgba(0, 255, 136, 0.03);
+    border-left: 3px solid var(--color-primary);
+    border-radius: 6px;
+}
+
+.meal-slot-header {
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.meal-slot-content {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+}
+
+/* Recipe Database */
+.recipe-database {
+    margin-top: 3rem;
+}
+
+.recipe-database h3 {
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-text);
+}
+
+.recipe-filters {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 0.625rem 1.25rem;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.filter-btn:hover {
+    background: var(--color-surface-elevated);
+    border-color: var(--color-primary);
+}
+
+.filter-btn.active {
+    background: var(--color-primary);
+    color: var(--color-bg);
+    border-color: var(--color-primary);
+}
+
+.recipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.recipe-card {
+    background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: var(--transition-smooth);
+    cursor: pointer;
+}
+
+.recipe-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-primary);
+}
+
+.recipe-image {
+    width: 100%;
+    height: 180px;
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 221, 119, 0.05));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+}
+
+.recipe-content {
+    padding: 1.25rem;
+}
+
+.recipe-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--color-text);
+    margin-bottom: 0.5rem;
+}
+
+.recipe-description {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.recipe-macros-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+
+.recipe-macro-item {
+    text-align: center;
+    padding: 0.5rem;
+    background: var(--color-surface);
+    border-radius: 6px;
+}
+
+.recipe-macro-value {
+    display: block;
+    font-weight: 700;
+    color: var(--color-primary);
+    font-size: 0.95rem;
+}
+
+.recipe-macro-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+}
+
+/* Workout Customization */
+.workout-customization {
+    background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.workout-customization h3 {
+    font-size: 1.5rem;
+    color: var(--color-text);
+    margin-bottom: 1.5rem;
+}
+
+.customization-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.custom-card {
+    background: var(--color-surface);
+    padding: 1.25rem;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+}
+
+.custom-card h4 {
+    color: var(--color-text);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.custom-card select {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--color-bg);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.custom-card select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+/* Rest Timer */
+.rest-timer-section {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(0, 221, 119, 0.02));
+    border: 2px solid rgba(0, 255, 136, 0.2);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.rest-timer-section h3 {
+    font-size: 1.5rem;
+    color: var(--color-primary);
+    margin-bottom: 1.5rem;
+}
+
+.timer-container {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.timer-display {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 5rem;
+    text-align: center;
+    color: var(--color-primary);
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.1em;
+}
+
+.timer-controls {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.btn-timer-preset {
+    padding: 0.75rem 1.5rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.btn-timer-preset:hover {
+    background: var(--color-primary);
+    color: var(--color-bg);
+    border-color: var(--color-primary);
+}
+
+.timer-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.btn-timer-start,
+.btn-timer-pause,
+.btn-timer-reset {
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.btn-timer-start {
+    background: var(--color-primary);
+    color: var(--color-bg);
+}
+
+.btn-timer-pause {
+    background: var(--color-warning);
+    color: var(--color-bg);
+}
+
+.btn-timer-reset {
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 2px solid var(--color-border);
+}
+
+/* Personal Records Tracker */
+.pr-tracker-section {
+    margin-top: 3rem;
+}
+
+.pr-tracker-section h3 {
+    font-size: 1.75rem;
+    color: var(--color-text);
+    margin-bottom: 0.5rem;
+}
+
+.pr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.pr-card {
+    background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: var(--transition-smooth);
+}
+
+.pr-card:hover {
+    border-color: var(--color-primary);
+}
+
+.pr-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--color-border);
+}
+
+.pr-header h4 {
+    color: var(--color-text);
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.btn-add-pr {
+    padding: 0.5rem 1rem;
+    background: var(--color-primary);
+    color: var(--color-bg);
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.btn-add-pr:hover {
+    background: var(--color-primary-dark);
+}
+
+.pr-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.pr-stat {
+    text-align: center;
+    padding: 1rem;
+    background: var(--color-surface);
+    border-radius: 8px;
+}
+
+.pr-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+}
+
+.pr-value {
+    display: block;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 1.5rem;
+    color: var(--color-primary);
+}
+
+.pr-history {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+/* Body Measurements */
+.measurements-section {
+    margin-top: 3rem;
+    background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 2rem;
+}
+
+.measurements-section h3 {
+    font-size: 1.75rem;
+    color: var(--color-text);
+    margin-bottom: 0.5rem;
+}
+
+.measurements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.measurement-input-card,
+.measurement-display-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.measurement-input-card h4,
+.measurement-display-card h4 {
+    color: var(--color-text);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.measurement-inputs {
+    display: grid;
+    gap: 1rem;
+}
+
+.measurement-stats {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.measurement-stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background: var(--color-bg);
+    border-radius: 8px;
+}
+
+.measurement-stat-label {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.measurement-stat-value {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+.measurement-change {
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
+}
+
+.measurement-change.positive {
+    color: var(--color-primary);
+}
+
+.measurement-change.negative {
+    color: var(--color-accent);
+}
+
+.measurement-history {
+    margin-top: 2rem;
+}
+
+.measurement-history h4 {
+    color: var(--color-text);
+    margin-bottom: 1rem;
+}
+
+.history-timeline {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.timeline-item {
+    padding: 1rem;
+    background: var(--color-surface);
+    border-left: 3px solid var(--color-primary);
+    border-radius: 6px;
+}
+
+.timeline-date {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.timeline-data {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+    color: var(--color-text);
+}
+
 /* Goals Container (keep at end) */
 .goals-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 2rem;
+}
+
+/* Personalization Survey Modal */
+.personalization-modal {
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.personalization-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--color-border);
+}
+
+.personalization-header h2 {
+    color: var(--color-text);
+    margin-bottom: 0.5rem;
+    font-size: 1.75rem;
+}
+
+.personalization-header p {
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+}
+
+.progress-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--color-border);
+    transition: var(--transition-smooth);
+}
+
+.dot.active {
+    background: var(--color-primary);
+    transform: scale(1.3);
+}
+
+.survey-step {
+    display: none;
+}
+
+.survey-step.active {
+    display: block;
+    animation: fadeInUp 0.3s ease;
+}
+
+.survey-step h3 {
+    color: var(--color-text);
+    margin-bottom: 1.5rem;
+    font-size: 1.4rem;
+}
+
+.survey-inputs {
+    display: grid;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.survey-inputs .input-group {
+    margin-bottom: 0;
+}
+
+.survey-inputs select,
+.survey-inputs textarea {
+    width: 100%;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Profile Display in UI */
+.profile-banner {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 221, 119, 0.05));
+    border: 2px solid rgba(0, 255, 136, 0.2);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.profile-info {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.profile-stat {
+    text-align: center;
+}
+
+.profile-stat-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.profile-stat-value {
+    display: block;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 1.3rem;
+    color: var(--color-primary);
+}
+
+.profile-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-edit-profile {
+    padding: 0.625rem 1.25rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.btn-edit-profile:hover {
+    background: var(--color-primary);
+    color: var(--color-bg);
+    border-color: var(--color-primary);
+}
+
+/* Personalized Plan Indicators */
+.personalized-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, var(--color-primary), #00dd77);
+    color: var(--color-bg);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-left: 0.75rem;
+}
+
+.personalized-badge::before {
+    content: '✨';
+    font-size: 1.1rem;
+}
+
+/* Responsive for Survey */
+@media (max-width: 768px) {
+    .personalization-modal {
+        width: 95%;
+        padding: 1.5rem;
+    }
+    
+    .profile-banner {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .profile-info {
+        width: 100%;
+        justify-content: space-around;
+    }
 }
 
 /* Footer */
