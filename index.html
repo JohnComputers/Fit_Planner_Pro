@@ -1326,110 +1326,244 @@
             <div id="pricingTab" class="tab-content">
                 <div class="section-header">
                     <h2>Upgrade Your Plan</h2>
-                    <p class="section-subtitle">Unlock advanced features to reach your goals faster</p>
+                    <p class="section-subtitle">One-time payment. Lifetime access. No subscriptions.</p>
                 </div>
 
                 <div class="pricing-grid">
-                    <div class="pricing-card">
+                    <!-- Free Tier -->
+                    <div class="pricing-card free-card">
                         <div class="pricing-header free">
+                            <div class="tier-badge current">Current Plan</div>
                             <h3>Free</h3>
-                            <div class="price">$0</div>
+                            <div class="price-container">
+                                <span class="price">$0</span>
+                                <span class="price-period">Forever</span>
+                            </div>
+                            <p class="tier-tagline">Start tracking today</p>
                         </div>
                         <ul class="features-list">
-                            <li>✓ Daily nutrition tracking</li>
-                            <li>✓ 4 macro tracking (cal, protein, carbs, sugar)</li>
-                            <li>✓ Cloud data sync</li>
-                            <li>✓ Recent entries history</li>
-                            <li>✗ Macro calculator</li>
-                            <li>✗ Nutrition goals & progress</li>
-                            <li>✗ Weekly trends & analytics</li>
-                            <li>✗ Meal planning</li>
-                            <li>✗ Recipe database</li>
-                            <li>✗ Workout plans</li>
+                            <li class="feature-included"><span class="check">✓</span> Daily nutrition tracking</li>
+                            <li class="feature-included"><span class="check">✓</span> 4 macro tracking</li>
+                            <li class="feature-included"><span class="check">✓</span> Cloud sync</li>
+                            <li class="feature-included"><span class="check">✓</span> Recent entries history</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Macro calculator</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Custom goals</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Meal planning</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Recipe database</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Workout plans</li>
                         </ul>
-                        <button class="btn-secondary" disabled>Current Plan</button>
+                        <button class="pricing-btn free-btn" disabled>
+                            <span class="btn-text">You're Here</span>
+                        </button>
                     </div>
 
-                    <div class="pricing-card featured">
-                        <div class="pricing-badge">Best for Goals</div>
+                    <!-- Basic Pack -->
+                    <div class="pricing-card pro-card">
                         <div class="pricing-header pro">
+                            <div class="tier-badge recommended">⭐ Best for Nutrition</div>
                             <h3>Basic Pack</h3>
-                            <div class="price">$5</div>
-                            <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-top: 0.5rem;">One-time payment</div>
+                            <div class="price-container">
+                                <span class="price">$5</span>
+                                <span class="price-period">One-time</span>
+                            </div>
+                            <p class="tier-tagline">Personalized nutrition</p>
                         </div>
                         <ul class="features-list">
-                            <li>✓ Everything in Free</li>
-                            <li>✓ <strong>AI Macro Calculator</strong></li>
-                            <li>✓ Complete nutrition goals (all 4 macros)</li>
-                            <li>✓ Real-time progress tracking</li>
-                            <li>✓ 7-day nutrition trends</li>
-                            <li>✓ Weekly adherence tracking</li>
-                            <li>✓ Smart meal suggestions</li>
-                            <li>✓ <strong>Weekly meal planner</strong></li>
-                            <li>✓ <strong>12+ macro-friendly recipes</strong></li>
-                            <li>✗ Workout plans & tracking</li>
+                            <li class="feature-included"><span class="check">✓</span> Everything in Free</li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>AI Macro Calculator</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Custom Goals</strong></li>
+                            <li class="feature-included"><span class="check">✓</span> Progress tracking</li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Weekly Meal Planner</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>12+ Recipes</strong></li>
+                            <li class="feature-included"><span class="check">✓</span> 7-day trends</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Workout plans</li>
                         </ul>
-                        <a href="https://square.link/u/EaNUJ0gy" class="btn-primary">Upgrade for $5</a>
+                        <a href="https://square.link/u/EaNUJ0gy" class="pricing-btn pro-btn">
+                            <span class="btn-icon">🎯</span>
+                            <span class="btn-text">Unlock for $5</span>
+                            <span class="btn-arrow">→</span>
+                        </a>
+                        <div class="value-text">Save $75/year vs MyFitnessPal</div>
                     </div>
 
-                    <div class="pricing-card">
+                    <!-- Standard Pack -->
+                    <div class="pricing-card standard-card">
                         <div class="pricing-header standard">
+                            <div class="tier-badge value">Great Value</div>
                             <h3>Standard Pack</h3>
-                            <div class="price">$10</div>
-                            <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-top: 0.5rem;">One-time payment</div>
+                            <div class="price-container">
+                                <span class="price">$10</span>
+                                <span class="price-period">One-time</span>
+                            </div>
+                            <p class="tier-tagline">Enhanced analytics</p>
                         </div>
                         <ul class="features-list">
-                            <li>✓ Everything in Basic</li>
-                            <li>✓ Enhanced goal analytics</li>
-                            <li>✓ Advanced progress visualization</li>
-                            <li>✓ Consistency streak tracking</li>
-                            <li>✓ Priority email support</li>
-                            <li>✓ Early access to new features</li>
-                            <li>✗ Complete workout system</li>
+                            <li class="feature-included"><span class="check">✓</span> Everything in Basic</li>
+                            <li class="feature-included"><span class="check">✓</span> Enhanced analytics</li>
+                            <li class="feature-included"><span class="check">✓</span> Advanced visualization</li>
+                            <li class="feature-included"><span class="check">✓</span> Streak tracking</li>
+                            <li class="feature-included"><span class="check">✓</span> Priority support</li>
+                            <li class="feature-included"><span class="check">✓</span> Early access features</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Complete workout system</li>
                         </ul>
-                        <a href="https://square.link/u/0cNYptZb" class="btn-primary">Upgrade for $10</a>
+                        <a href="https://square.link/u/0cNYptZb" class="pricing-btn standard-btn">
+                            <span class="btn-icon">📈</span>
+                            <span class="btn-text">Unlock for $10</span>
+                            <span class="btn-arrow">→</span>
+                        </a>
+                        <div class="value-text">Save $5 vs Basic alone</div>
                     </div>
 
-                    <div class="pricing-card featured">
-                        <div class="pricing-badge">🏆 Complete System</div>
+                    <!-- Premium Pack -->
+                    <div class="pricing-card elite-card featured-card">
                         <div class="pricing-header elite">
+                            <div class="tier-badge best">🏆 BEST VALUE</div>
                             <h3>Premium Pack</h3>
-                            <div class="price">$20</div>
-                            <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-top: 0.5rem;">One-time payment</div>
+                            <div class="price-container">
+                                <span class="price">$20</span>
+                                <span class="price-period">One-time</span>
+                            </div>
+                            <p class="tier-tagline">Complete fitness system</p>
                         </div>
                         <ul class="features-list">
-                            <li>✓ Everything in Standard</li>
-                            <li>✓ <strong>Complete PPL workout program</strong></li>
-                            <li>✓ 21 exercises with form guides</li>
-                            <li>✓ <strong>Weekly workout tracker</strong></li>
-                            <li>✓ <strong>Built-in rest timer</strong></li>
-                            <li>✓ <strong>Personal records tracker</strong></li>
-                            <li>✓ <strong>Body measurements tracker</strong></li>
-                            <li>✓ Workout customization tools</li>
-                            <li>✓ Training schedules (3-6 days/week)</li>
-                            <li>✓ Progressive overload guidance</li>
-                            <li>✓ <strong>COMPLETE fitness system</strong></li>
+                            <li class="feature-included"><span class="check">✓</span> Everything in Standard</li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Complete PPL Program</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>21 Exercises + Form Guides</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Workout Tracker</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Rest Timer</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>PR Tracker</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Body Measurements</strong></li>
+                            <li class="feature-included"><span class="check">✓</span> Custom workout splits</li>
+                            <li class="feature-included"><span class="check">✓</span> Equipment adaptations</li>
                         </ul>
-                        <a href="https://square.link/u/6Y9uWLVv" class="btn-primary">Get Full Access - $20</a>
+                        <a href="https://square.link/u/6Y9uWLVv" class="pricing-btn elite-btn">
+                            <span class="btn-icon">🚀</span>
+                            <span class="btn-text">Get Complete System - $20</span>
+                            <span class="btn-arrow">→</span>
+                        </a>
+                        <div class="value-text premium">Replaces $100/month trainer</div>
+                    </div>
+                </div>
+
+                <!-- Trust Indicators -->
+                <div class="trust-section">
+                    <div class="trust-item">
+                        <div class="trust-icon">🔒</div>
+                        <div class="trust-content">
+                            <strong>Secure Payment</strong>
+                            <p>Powered by Square</p>
+                        </div>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">💳</div>
+                        <div class="trust-content">
+                            <strong>One-Time</strong>
+                            <p>No subscriptions</p>
+                        </div>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">⚡</div>
+                        <div class="trust-content">
+                            <strong>Instant</strong>
+                            <p>Unlocks immediately</p>
+                        </div>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">♾️</div>
+                        <div class="trust-content">
+                            <strong>Lifetime</strong>
+                            <p>Yours forever</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- How It Works -->
+                <div class="how-it-works">
+                    <h3>📱 How It Works</h3>
+                    <div class="steps-grid">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h5>Choose Plan</h5>
+                                <p>Click the button above</p>
+                            </div>
+                        </div>
+                        <div class="step-arrow">→</div>
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h5>Secure Checkout</h5>
+                                <p>Pay via Square (30 sec)</p>
+                            </div>
+                        </div>
+                        <div class="step-arrow">→</div>
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h5>Personalize</h5>
+                                <p>Quick 3-step survey</p>
+                            </div>
+                        </div>
+                        <div class="step-arrow">→</div>
+                        <div class="step-item">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h5>Start!</h5>
+                                <p>All features unlocked</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ Section for Fool-Proof UX -->
+                <div class="faq-section">
+                    <h3>❓ Questions? We Got You</h3>
+                    <div class="faq-grid">
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <strong>Q:</strong> Is this really one-time or a subscription?
+                            </div>
+                            <div class="faq-answer">
+                                <strong>A:</strong> 100% one-time payment! Pay once, access forever. No monthly fees, no renewals, no tricks.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <strong>Q:</strong> What happens after I click the button?
+                            </div>
+                            <div class="faq-answer">
+                                <strong>A:</strong> You'll go to Square's secure checkout → Pay → Automatically redirected back → Survey pops up → Features unlock instantly!
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <strong>Q:</strong> Can I try before I buy?
+                            </div>
+                            <div class="faq-answer">
+                                <strong>A:</strong> Yes! The Free tier lets you track nutrition and see the app. Upgrade anytime when you're ready for personalized features.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <strong>Q:</strong> Will this work on my phone?
+                            </div>
+                            <div class="faq-answer">
+                                <strong>A:</strong> Absolutely! Works on any device - iPhone, Android, tablet, computer. Your data syncs across all of them.
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="donation-section">
-                    <h3>Support FitPlanner Pro</h3>
-                    <p>Love what we're building? Your donation helps us create better features!</p>
-                    <a href="https://square.link/u/91I3ruxV" class="btn-donation">Make a Donation ❤️</a>
-                </div>
-
-                <div class="unlock-instructions">
-                    <h4>How to Unlock Features</h4>
-                    <p>After completing your purchase on Square, you'll be redirected back. Your features will unlock automatically!</p>
+                    <p>Love FitPlanner Pro? Support development</p>
+                    <a href="https://square.link/u/91I3ruxV" class="btn-donation">❤️ Make a Donation</a>
                 </div>
             </div>
         </main>
 
         <!-- Footer -->
         <footer class="app-footer">
-            <p>&copy; 2026 FitPlanner Pro. Track smarter, achieve faster.</p>
+            <p>&copy; 2024 FitPlanner Pro. Track smarter, achieve faster.</p>
         </footer>
     </div>
 
@@ -1439,5 +1573,6 @@
     <script src="admin.js"></script>
     <script src="firebase-config.js"></script>
     <script src="personalization.js"></script>
+    <script src="ux-enhancements.js"></script>
 </body>
 </html>
