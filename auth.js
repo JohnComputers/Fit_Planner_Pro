@@ -115,12 +115,49 @@ function showApp(userData) {
     
     // Update user info in header
     document.getElementById('userEmail').textContent = userData.email || 'Guest User';
-    updateTierDisplay();
     
-    // Load app data
-    loadNutritionData();
-    loadGoals();
-    updateFeatureAccess();
+    // CRITICAL FIX: Reload tier from Firebase on every page load
+    if (isFirebaseReady() && userData.uid) {
+        firebase.database().ref('users/' + userData.uid).once('value').then((snapshot) => {
+            const dbUserData = snapshot.val();
+            if (dbUserData && dbUserData.tier) {
+                // Update tier from database
+                userData.tier = dbUserData.tier;
+                localStorage.setItem('currentUser', JSON.stringify(userData));
+                console.log('✅ Tier loaded from Firebase:', dbUserData.tier);
+            }
+            
+            // Update UI after tier is loaded
+            updateTierDisplay();
+            updateFeatureAccess();
+            
+            // Load initial content
+            loadNutritionData();
+            loadGoals();
+            
+            // Display profile if exists
+            if (typeof displayProfile === 'function') {
+                setTimeout(() => displayProfile(), 100);
+            }
+        }).catch((error) => {
+            console.error('Error loading tier from Firebase:', error);
+            // Still show app with current tier
+            updateTierDisplay();
+            updateFeatureAccess();
+            loadNutritionData();
+            loadGoals();
+        });
+    } else {
+        // No Firebase, use local storage tier
+        updateTierDisplay();
+        updateFeatureAccess();
+        loadNutritionData();
+        loadGoals();
+        
+        if (typeof displayProfile === 'function') {
+            setTimeout(() => displayProfile(), 100);
+        }
+    }
 }
 
 // Handle user registration
@@ -129,25 +166,130 @@ function handleRegister() {
     const password = document.getElementById('registerPassword').value;
     const confirmPassword = document.getElementById('registerPasswordConfirm').value;
     
-    // Validation
-    if (!email || !password || !confirmPassword) {
-        alert('Please fill in all fields');
+    // Clear any previous errors
+    document.querySelectorAll('.field-error').forEach(el => el.remove());
+    document.querySelectorAll('input').forEach(input => input.style.borderColor = '');
+    
+    // Validation with helpful messages
+    if (!email) {
+        showFieldError('registerEmail', 'Please enter your email address');
         return;
     }
     
-    if (!isValidEmail(email)) {
-        alert('Please enter a valid email address');
+    if (!validateEmail(email)) {
+        showFieldError('registerEmail', 'Please enter a valid email (e.g., you@example.com)');
+        return;
+    }
+    
+    if (!password) {
+        showFieldError('registerPassword', 'Please create a password');
         return;
     }
     
     if (password.length < 6) {
-        alert('Password must be at least 6 characters long');
+        showFieldError('registerPassword', 'Password must be at least 6 characters for security');
+        return;
+    }
+    
+    if (!confirmPassword) {
+        showFieldError('registerPasswordConfirm', 'Please confirm your password');
         return;
     }
     
     if (password !== confirmPassword) {
-        alert('Passwords do not match');
+        showFieldError('registerPasswordConfirm', 'Passwords don\'t match. Please try again.');
         return;
+    }
+    
+    // Show loading state
+    showLoading('Creating your account...');
+    
+    // Admin auto-upgrade check
+    const isAdmin = (email.toLowerCase() === 'random111199@gmail.com');
+    const tier = isAdmin ? 'ELITE' : 'FREE';
+    
+    if (isFirebaseReady()) {
+        // Firebase registration
+        firebase.auth().createUserWithEmailAndPassword(email, password)
+            .then((userCredential) => {
+                const user = userCredential.user;
+                
+                // Save user data to database
+                const userData = {
+                    email: email,
+                    tier: tier,
+                    createdAt: new Date().toISOString(),
+                    uid: user.uid
+                };
+                
+                return firebase.database().ref('users/' + user.uid).set(userData)
+                    .then(() => {
+                        hideLoading();
+                        celebrateSuccess('Account Created! 🎉');
+                        
+                        // Save to localStorage
+                        localStorage.setItem('currentUser', JSON.stringify(userData));
+                        
+                        // Show admin message if applicable
+                        if (isAdmin) {
+                            setTimeout(() => {
+                                alert('🎉 Admin account detected!\n\nYou have been automatically upgraded to ELITE tier with full access to all features.\n\nWelcome to FitPlanner Pro!');
+                            }, 1500);
+                        } else {
+                            // Show welcome tip for regular users
+                            setTimeout(() => {
+                                showFirstTimeTip('welcome', 'Welcome! Start by tracking your first meal in the Nutrition tab 🍽️', 8000);
+                            }, 2000);
+                        }
+                        
+                        showApp(userData);
+                    });
+            })
+            .catch((error) => {
+                hideLoading();
+                handleAuthError(error, 'register');
+            });
+    } else {
+        // Fallback to localStorage
+        setTimeout(() => {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            
+            // Check if email already exists
+            if (users.some(u => u.email === email)) {
+                hideLoading();
+                showFieldError('registerEmail', 'This email is already registered. Try logging in instead!');
+                return;
+            }
+            
+            const userData = {
+                email: email,
+                password: password,
+                tier: tier,
+                createdAt: new Date().toISOString(),
+                uid: 'local_' + Date.now()
+            };
+            
+            users.push(userData);
+            localStorage.setItem('users', JSON.stringify(users));
+            localStorage.setItem('currentUser', JSON.stringify(userData));
+            
+            hideLoading();
+            celebrateSuccess('Account Created! 🎉');
+            
+            if (isAdmin) {
+                setTimeout(() => {
+                    alert('🎉 Admin account detected!\n\nYou have been automatically upgraded to ELITE tier.\n\nWelcome!');
+                }, 1500);
+            } else {
+                setTimeout(() => {
+                    showFirstTimeTip('welcome', 'Welcome! Start by tracking your first meal in the Nutrition tab 🍽️', 8000);
+                }, 2000);
+            }
+            
+            showApp(userData);
+        }, 1000);
+    }
+}
     }
     
     if (isFirebaseReady()) {
@@ -226,16 +368,35 @@ function handleLogin() {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     
-    // Validation
-    if (!email || !password) {
-        alert('Please fill in all fields');
+    // Clear previous errors
+    document.querySelectorAll('.field-error').forEach(el => el.remove());
+    document.querySelectorAll('input').forEach(input => input.style.borderColor = '');
+    
+    // Validation with helpful messages
+    if (!email) {
+        showFieldError('loginEmail', 'Please enter your email address');
         return;
     }
+    
+    if (!validateEmail(email)) {
+        showFieldError('loginEmail', 'Please enter a valid email address');
+        return;
+    }
+    
+    if (!password) {
+        showFieldError('loginPassword', 'Please enter your password');
+        return;
+    }
+    
+    // Show loading
+    showLoading('Logging you in...');
     
     if (isFirebaseReady()) {
         // Use Firebase Authentication
         firebase.auth().signInWithEmailAndPassword(email, password)
             .then((userCredential) => {
+                hideLoading();
+                
                 // Login successful - check if admin and upgrade if needed
                 if (email === 'random111199@gmail.com') {
                     const user = userCredential.user;
@@ -246,43 +407,56 @@ function handleLogin() {
                         }
                     });
                 }
-                showSuccessMessage('Welcome back!');
+                
+                celebrateSuccess('Welcome Back! 👋');
             })
             .catch((error) => {
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                    alert('Invalid email or password');
+                hideLoading();
+                
+                if (error.code === 'auth/user-not-found') {
+                    showFieldError('loginEmail', 'No account found with this email. Try creating an account!');
+                } else if (error.code === 'auth/wrong-password') {
+                    showFieldError('loginPassword', 'Incorrect password. Please try again.');
                 } else if (error.code === 'auth/invalid-email') {
-                    alert('Invalid email address');
+                    showFieldError('loginEmail', 'Invalid email format');
+                } else if (error.code === 'auth/too-many-requests') {
+                    alert('⚠️ Too many failed login attempts.\n\nPlease wait a few minutes and try again, or reset your password.');
                 } else {
-                    alert('Error signing in: ' + error.message);
+                    alert('Login error: ' + error.message);
                 }
             });
     } else {
         // Fallback to LocalStorage
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const user = users.find(u => u.email === email && u.password === password);
-        
-        if (!user) {
-            alert('Invalid email or password');
-            return;
-        }
-        
-        // Auto-upgrade admin email to ELITE
-        let tier = user.tier || 'FREE';
-        if (email === 'random111199@gmail.com' && tier !== 'ELITE') {
-            tier = 'ELITE';
-            user.tier = 'ELITE';
-            localStorage.setItem('users', JSON.stringify(users));
-        }
-        
-        const currentUser = {
-            email: email,
-            tier: tier,
-            isGuest: false
-        };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        
-        showApp(currentUser);
+        setTimeout(() => {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.email === email && u.password === password);
+            
+            if (!user) {
+                hideLoading();
+                showFieldError('loginPassword', 'Invalid email or password. Double check and try again!');
+                return;
+            }
+            
+            // Auto-upgrade admin email to ELITE
+            let tier = user.tier || 'FREE';
+            if (email === 'random111199@gmail.com' && tier !== 'ELITE') {
+                tier = 'ELITE';
+                user.tier = 'ELITE';
+                localStorage.setItem('users', JSON.stringify(users));
+            }
+            
+            const currentUser = {
+                email: email,
+                tier: tier,
+                isGuest: false,
+                uid: user.uid
+            };
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            
+            hideLoading();
+            celebrateSuccess('Welcome Back! 👋');
+            showApp(currentUser);
+        }, 800);
     }
 }
 
