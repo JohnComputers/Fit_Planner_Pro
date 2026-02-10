@@ -48,8 +48,15 @@ function handleUnlock(tier) {
     // Update user tier
     updateUserTier(appTier);
     
-    // Show success message
+    // Show success message THEN trigger personalization survey
     showUnlockSuccess(appTier);
+    
+    // Trigger personalization survey after a short delay
+    setTimeout(() => {
+        if (typeof showPersonalizationSurvey === 'function') {
+            showPersonalizationSurvey(appTier);
+        }
+    }, 2000); // Give user time to see success message first
 }
 
 // Show unlock success notification
@@ -59,17 +66,18 @@ function showUnlockSuccess(tier) {
     
     if (tier === 'PRO') {
         tierName = 'Basic Pack';
-        features = 'You can now set nutrition goals and track your progress!';
+        features = 'Get ready to personalize your nutrition plan!';
     } else if (tier === 'STANDARD') {
         tierName = 'Standard Pack';
-        features = 'You can now access enhanced goal tracking and advanced analytics!';
+        features = 'Get ready for enhanced goal tracking and analytics!';
     } else if (tier === 'ELITE') {
         tierName = 'Premium Pack';
-        features = 'You now have full access to all features including workout plans!';
+        features = 'Get ready for personalized workout and nutrition plans!';
     }
     
     // Create success modal
     const modal = document.createElement('div');
+    modal.id = 'unlockSuccessModal';
     modal.style.cssText = `
         position: fixed;
         top: 0;
@@ -126,7 +134,7 @@ function showUnlockSuccess(tier) {
             ">
                 ${features}
             </p>
-            <button onclick="this.closest('[style*=fixed]').remove()" style="
+            <button id="continueBtn" style="
                 padding: 1rem 2rem;
                 background: linear-gradient(135deg, var(--color-primary), #00dd77);
                 color: var(--color-bg);
@@ -138,12 +146,24 @@ function showUnlockSuccess(tier) {
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
             ">
-                Start Exploring
+                Continue
             </button>
         </div>
     `;
     
     document.body.appendChild(modal);
+    
+    // Auto-close after 1.5 seconds OR on button click
+    document.getElementById('continueBtn').onclick = function() {
+        document.getElementById('unlockSuccessModal').remove();
+    };
+    
+    setTimeout(() => {
+        const modalElement = document.getElementById('unlockSuccessModal');
+        if (modalElement) {
+            modalElement.remove();
+        }
+    }, 1500);
 }
 
 // Payment link tracking (optional analytics)
