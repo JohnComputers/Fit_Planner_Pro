@@ -270,7 +270,7 @@ function loadNutritionData() {
         // Show helpful tip for first-time users
         if (entries.length === 1) {
             setTimeout(() => {
-                showFirstTimeTip('first_entry', 'Great start! Keep tracking to see your progress over time 📊', 5000);
+                safeShowFirstTimeTip('first_entry', 'Great start! Keep tracking to see your progress over time 📊', 5000);
             }, 1000);
         }
     }
@@ -1440,6 +1440,68 @@ function updateWeekSummary() {
     document.getElementById('weekStreak').textContent = streak;
 }
 
+// Success message display
+function showSuccessMessage(message) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'success-message';
+    successDiv.textContent = message;
+    successDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, var(--color-primary), #00dd77);
+        color: var(--color-bg);
+        padding: 1rem 2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        box-shadow: var(--shadow-lg);
+        z-index: 1000;
+        animation: slideInRight 0.3s ease;
+    `;
+    
+    document.body.appendChild(successDiv);
+    
+    setTimeout(() => {
+        successDiv.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => successDiv.remove(), 300);
+    }, 3000);
+}
+
+// Safe wrappers for UX functions (in case ux-enhancements.js not loaded)
+function safeShowTooltip(element, message, duration) {
+    if (typeof showTooltip === 'function') {
+        showTooltip(element, message, duration);
+    } else {
+        alert(message);
+    }
+}
+
+function safeConfirmDialog(message, onConfirm, onCancel) {
+    if (typeof confirmDialog === 'function') {
+        confirmDialog(message, onConfirm, onCancel);
+    } else {
+        if (confirm(message)) {
+            if (onConfirm) onConfirm();
+        } else {
+            if (onCancel) onCancel();
+        }
+    }
+}
+
+function safeCelebrateSuccess(message) {
+    if (typeof celebrateSuccess === 'function') {
+        celebrateSuccess(message);
+    } else {
+        showSuccessMessage(message);
+    }
+}
+
+function safeShowFirstTimeTip(key, message, duration) {
+    if (typeof showFirstTimeTip === 'function') {
+        showFirstTimeTip(key, message, duration);
+    }
+}
+
 // Add CSS animations for success message
 const style = document.createElement('style');
 style.textContent = `
@@ -1475,6 +1537,9 @@ function initializeApp() {
         // User is logged in, load their data
         console.log('🔄 Initializing app for user:', currentUser.email);
         
+        // Display today's date
+        updateTodayDate();
+        
         // Load nutrition data for active tab
         setTimeout(() => {
             loadNutritionData();
@@ -1488,9 +1553,22 @@ function initializeApp() {
     }
 }
 
+// Update today's date display
+function updateTodayDate() {
+    const todayDateEl = document.getElementById('todayDate');
+    if (todayDateEl) {
+        const today = new Date();
+        const options = { weekday: 'long', month: 'long', day: 'numeric' };
+        todayDateEl.textContent = today.toLocaleDateString('en-US', options);
+    }
+}
+
 // Run initialization when page loads
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeApp);
 } else {
     initializeApp();
 }
+
+// Update date every minute (in case app stays open overnight)
+setInterval(updateTodayDate, 60000);
