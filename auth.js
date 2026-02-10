@@ -160,6 +160,56 @@ function showApp(userData) {
     }
 }
 
+// Email validation helper
+function isValidEmail(email) {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+}
+
+// Safe UX function wrappers (fallback if ux-enhancements.js not loaded)
+function safeShowFieldError(fieldId, message) {
+    if (typeof showFieldError === 'function') {
+        showFieldError(fieldId, message);
+    } else {
+        alert(message);
+    }
+}
+
+function safeShowLoading(message) {
+    if (typeof showLoading === 'function') {
+        showLoading(message);
+    }
+}
+
+function safeHideLoading() {
+    if (typeof hideLoading === 'function') {
+        hideLoading();
+    }
+}
+
+function safeCelebrateSuccess(message) {
+    if (typeof celebrateSuccess === 'function') {
+        celebrateSuccess(message);
+    } else if (typeof showSuccessMessage === 'function') {
+        showSuccessMessage(message);
+    } else {
+        alert(message);
+    }
+}
+
+function safeShowFirstTimeTip(key, message, duration) {
+    if (typeof showFirstTimeTip === 'function') {
+        showFirstTimeTip(key, message, duration);
+    }
+}
+
+function safeValidateEmail(email) {
+    if (typeof validateEmail === 'function') {
+        return validateEmail(email);
+    }
+    return isValidEmail(email);
+}
+
 // Handle user registration
 function handleRegister() {
     const email = document.getElementById('registerEmail').value.trim();
@@ -172,37 +222,37 @@ function handleRegister() {
     
     // Validation with helpful messages
     if (!email) {
-        showFieldError('registerEmail', 'Please enter your email address');
+        safeShowFieldError('registerEmail', 'Please enter your email address');
         return;
     }
     
-    if (!validateEmail(email)) {
-        showFieldError('registerEmail', 'Please enter a valid email (e.g., you@example.com)');
+    if (!safeValidateEmail(email)) {
+        safeShowFieldError('registerEmail', 'Please enter a valid email (e.g., you@example.com)');
         return;
     }
     
     if (!password) {
-        showFieldError('registerPassword', 'Please create a password');
+        safeShowFieldError('registerPassword', 'Please create a password');
         return;
     }
     
     if (password.length < 6) {
-        showFieldError('registerPassword', 'Password must be at least 6 characters for security');
+        safeShowFieldError('registerPassword', 'Password must be at least 6 characters for security');
         return;
     }
     
     if (!confirmPassword) {
-        showFieldError('registerPasswordConfirm', 'Please confirm your password');
+        safeShowFieldError('registerPasswordConfirm', 'Please confirm your password');
         return;
     }
     
     if (password !== confirmPassword) {
-        showFieldError('registerPasswordConfirm', 'Passwords don\'t match. Please try again.');
+        safeShowFieldError('registerPasswordConfirm', 'Passwords don\'t match. Please try again.');
         return;
     }
     
     // Show loading state
-    showLoading('Creating your account...');
+    safeShowLoading('Creating your account...');
     
     // Admin auto-upgrade check
     const isAdmin = (email.toLowerCase() === 'random111199@gmail.com');
@@ -224,8 +274,8 @@ function handleRegister() {
                 
                 return firebase.database().ref('users/' + user.uid).set(userData)
                     .then(() => {
-                        hideLoading();
-                        celebrateSuccess('Account Created! 🎉');
+                        safeHideLoading();
+                        safeCelebrateSuccess('Account Created! 🎉');
                         
                         // Save to localStorage
                         localStorage.setItem('currentUser', JSON.stringify(userData));
@@ -238,7 +288,7 @@ function handleRegister() {
                         } else {
                             // Show welcome tip for regular users
                             setTimeout(() => {
-                                showFirstTimeTip('welcome', 'Welcome! Start by tracking your first meal in the Nutrition tab 🍽️', 8000);
+                                safeShowFirstTimeTip('welcome', 'Welcome! Start by tracking your first meal in the Nutrition tab 🍽️', 8000);
                             }, 2000);
                         }
                         
@@ -246,7 +296,7 @@ function handleRegister() {
                     });
             })
             .catch((error) => {
-                hideLoading();
+                safeHideLoading();
                 handleAuthError(error, 'register');
             });
     } else {
@@ -256,8 +306,8 @@ function handleRegister() {
             
             // Check if email already exists
             if (users.some(u => u.email === email)) {
-                hideLoading();
-                showFieldError('registerEmail', 'This email is already registered. Try logging in instead!');
+                safeHideLoading();
+                safeShowFieldError('registerEmail', 'This email is already registered. Try logging in instead!');
                 return;
             }
             
@@ -273,8 +323,8 @@ function handleRegister() {
             localStorage.setItem('users', JSON.stringify(users));
             localStorage.setItem('currentUser', JSON.stringify(userData));
             
-            hideLoading();
-            celebrateSuccess('Account Created! 🎉');
+            safeHideLoading();
+            safeCelebrateSuccess('Account Created! 🎉');
             
             if (isAdmin) {
                 setTimeout(() => {
@@ -282,7 +332,7 @@ function handleRegister() {
                 }, 1500);
             } else {
                 setTimeout(() => {
-                    showFirstTimeTip('welcome', 'Welcome! Start by tracking your first meal in the Nutrition tab 🍽️', 8000);
+                    safeShowFirstTimeTip('welcome', 'Welcome! Start by tracking your first meal in the Nutrition tab 🍽️', 8000);
                 }, 2000);
             }
             
@@ -374,28 +424,28 @@ function handleLogin() {
     
     // Validation with helpful messages
     if (!email) {
-        showFieldError('loginEmail', 'Please enter your email address');
+        safeShowFieldError('loginEmail', 'Please enter your email address');
         return;
     }
     
-    if (!validateEmail(email)) {
-        showFieldError('loginEmail', 'Please enter a valid email address');
+    if (!safeValidateEmail(email)) {
+        safeShowFieldError('loginEmail', 'Please enter a valid email address');
         return;
     }
     
     if (!password) {
-        showFieldError('loginPassword', 'Please enter your password');
+        safeShowFieldError('loginPassword', 'Please enter your password');
         return;
     }
     
     // Show loading
-    showLoading('Logging you in...');
+    safeShowLoading('Logging you in...');
     
     if (isFirebaseReady()) {
         // Use Firebase Authentication
         firebase.auth().signInWithEmailAndPassword(email, password)
             .then((userCredential) => {
-                hideLoading();
+                safeHideLoading();
                 
                 // Login successful - check if admin and upgrade if needed
                 if (email === 'random111199@gmail.com') {
@@ -408,17 +458,17 @@ function handleLogin() {
                     });
                 }
                 
-                celebrateSuccess('Welcome Back! 👋');
+                safeCelebrateSuccess('Welcome Back! 👋');
             })
             .catch((error) => {
-                hideLoading();
+                safeHideLoading();
                 
                 if (error.code === 'auth/user-not-found') {
-                    showFieldError('loginEmail', 'No account found with this email. Try creating an account!');
+                    safeShowFieldError('loginEmail', 'No account found with this email. Try creating an account!');
                 } else if (error.code === 'auth/wrong-password') {
-                    showFieldError('loginPassword', 'Incorrect password. Please try again.');
+                    safeShowFieldError('loginPassword', 'Incorrect password. Please try again.');
                 } else if (error.code === 'auth/invalid-email') {
-                    showFieldError('loginEmail', 'Invalid email format');
+                    safeShowFieldError('loginEmail', 'Invalid email format');
                 } else if (error.code === 'auth/too-many-requests') {
                     alert('⚠️ Too many failed login attempts.\n\nPlease wait a few minutes and try again, or reset your password.');
                 } else {
@@ -432,8 +482,8 @@ function handleLogin() {
             const user = users.find(u => u.email === email && u.password === password);
             
             if (!user) {
-                hideLoading();
-                showFieldError('loginPassword', 'Invalid email or password. Double check and try again!');
+                safeHideLoading();
+                safeShowFieldError('loginPassword', 'Invalid email or password. Double check and try again!');
                 return;
             }
             
@@ -453,8 +503,8 @@ function handleLogin() {
             };
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
             
-            hideLoading();
-            celebrateSuccess('Welcome Back! 👋');
+            safeHideLoading();
+            safeCelebrateSuccess('Welcome Back! 👋');
             showApp(currentUser);
         }, 800);
     }
