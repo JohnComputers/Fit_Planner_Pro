@@ -1,264 +1,1701 @@
-// Payments System
-// Handles tier unlocking via Square payment link redirects
-
-// Check for unlock parameter on page load
-document.addEventListener('DOMContentLoaded', function() {
-    checkUnlockParameter();
-});
-
-// Check URL for unlock parameter
-function checkUnlockParameter() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const unlockTier = urlParams.get('unlock');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitPlanner Pro - Your Fitness Journey</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     
-    if (unlockTier) {
-        handleUnlock(unlockTier.toUpperCase());
-        
-        // Clean URL (remove parameter)
-        const cleanUrl = window.location.origin + window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-    }
-}
-
-// Handle tier unlock
-function handleUnlock(tier) {
-    const validTiers = ['PRO', 'STANDARD', 'ELITE'];
-    
-    if (!validTiers.includes(tier)) {
-        console.error('Invalid tier:', tier);
-        return;
-    }
-    
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-        alert('Please create an account or login to unlock features.');
-        return;
-    }
-    
-    // Map payment tiers to app tiers
-    let appTier = tier;
-    if (tier === 'PRO') {
-        appTier = 'PRO'; // Basic Pack
-    } else if (tier === 'STANDARD') {
-        appTier = 'STANDARD'; // Standard Pack
-    } else if (tier === 'ELITE') {
-        appTier = 'ELITE'; // Premium Pack
-    }
-    
-    // Update user tier
-    updateUserTier(appTier);
-    
-    // Show success message THEN trigger personalization survey
-    showUnlockSuccess(appTier);
-    
-    // Trigger personalization survey after a short delay
-    setTimeout(() => {
-        if (typeof showPersonalizationSurvey === 'function') {
-            showPersonalizationSurvey(appTier);
-        }
-    }, 2000); // Give user time to see success message first
-}
-
-// Show unlock success notification
-function showUnlockSuccess(tier) {
-    let tierName = '';
-    let features = '';
-    
-    if (tier === 'PRO') {
-        tierName = 'Basic Pack';
-        features = 'Get ready to personalize your nutrition plan!';
-    } else if (tier === 'STANDARD') {
-        tierName = 'Standard Pack';
-        features = 'Get ready for enhanced goal tracking and analytics!';
-    } else if (tier === 'ELITE') {
-        tierName = 'Premium Pack';
-        features = 'Get ready for personalized workout and nutrition plans!';
-    }
-    
-    // Create success modal
-    const modal = document.createElement('div');
-    modal.id = 'unlockSuccessModal';
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(10, 14, 19, 0.95);
-        backdrop-filter: blur(10px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        animation: fadeIn 0.3s ease;
-    `;
-    
-    modal.innerHTML = `
-        <div style="
-            background: var(--color-surface-elevated);
-            border-radius: 20px;
-            padding: 3rem;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            box-shadow: var(--shadow-lg), var(--shadow-glow);
-            border: 1px solid var(--color-border);
-            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        ">
-            <div style="
-                width: 80px;
-                height: 80px;
-                background: linear-gradient(135deg, var(--color-primary), #00dd77);
-                border-radius: 50%;
-                margin: 0 auto 1.5rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 3rem;
-            ">
-                ✓
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <!-- Authentication Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <div class="auth-container">
+                <h1 class="auth-title">Welcome to FitPlanner Pro</h1>
+                <p style="color: var(--color-text-secondary); text-align: center; margin-bottom: 2rem;">
+                    Track nutrition, reach goals, transform your body 💪
+                </p>
+                <div id="loginForm" class="auth-form">
+                    <h2>Sign In</h2>
+                    <div class="input-group">
+                        <input 
+                            type="email" 
+                            id="loginEmail" 
+                            placeholder="your@email.com" 
+                            autocomplete="email"
+                            required
+                        >
+                    </div>
+                    <div class="input-group">
+                        <input 
+                            type="password" 
+                            id="loginPassword" 
+                            placeholder="Enter your password" 
+                            autocomplete="current-password"
+                            required
+                        >
+                    </div>
+                    <button onclick="handleLogin()" class="btn-primary" style="width: 100%;">
+                        Sign In
+                    </button>
+                    <p class="auth-switch">Don't have an account? <span onclick="showRegister()">Register</span></p>
+                    <p class="auth-switch">or <span onclick="handleGuest()">Continue as Guest</span></p>
+                </div>
+                <div id="registerForm" class="auth-form" style="display: none;">
+                    <h2>Create Account</h2>
+                    <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                        Join thousands tracking their fitness journey 🎯
+                    </p>
+                    <div class="input-group">
+                        <input 
+                            type="email" 
+                            id="registerEmail" 
+                            placeholder="your@email.com" 
+                            autocomplete="email"
+                            required
+                        >
+                    </div>
+                    <div class="input-group">
+                        <input 
+                            type="password" 
+                            id="registerPassword" 
+                            placeholder="Choose a password (6+ characters)" 
+                            autocomplete="new-password"
+                            minlength="6"
+                            required
+                        >
+                    </div>
+                    <div class="input-group">
+                        <input 
+                            type="password" 
+                            id="registerPasswordConfirm" 
+                            placeholder="Confirm your password" 
+                            autocomplete="new-password"
+                            minlength="6"
+                            required
+                        >
+                    </div>
+                    <button onclick="handleRegister()" class="btn-primary" style="width: 100%;">
+                        Create Account
+                    </button>
+                    <p class="auth-switch">Already have an account? <span onclick="showLogin()">Sign In</span></p>
+                </div>
             </div>
-            <h2 style="
-                font-family: 'Archivo Black', sans-serif;
-                font-size: 2rem;
-                margin-bottom: 1rem;
-                color: var(--color-text);
-            ">
-                Welcome to ${tierName}!
-            </h2>
-            <p style="
-                color: var(--color-text-secondary);
-                font-size: 1.1rem;
-                margin-bottom: 2rem;
-                line-height: 1.6;
-            ">
-                ${features}
-            </p>
-            <button id="continueBtn" style="
-                padding: 1rem 2rem;
-                background: linear-gradient(135deg, var(--color-primary), #00dd77);
-                color: var(--color-bg);
-                border: none;
-                border-radius: 10px;
-                font-size: 1rem;
-                font-weight: 700;
-                cursor: pointer;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            ">
-                Continue
-            </button>
         </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Auto-close after 1.5 seconds OR on button click
-    document.getElementById('continueBtn').onclick = function() {
-        document.getElementById('unlockSuccessModal').remove();
-    };
-    
-    setTimeout(() => {
-        const modalElement = document.getElementById('unlockSuccessModal');
-        if (modalElement) {
-            modalElement.remove();
-        }
-    }, 1500);
-}
+    </div>
 
-// Payment link tracking (optional analytics)
-function trackPaymentClick(tier) {
-    // This function can be used to track when users click payment links
-    console.log('Payment link clicked for tier:', tier);
-    
-    // Store in localStorage for analytics
-    const clicks = JSON.parse(localStorage.getItem('paymentClicks') || '[]');
-    clicks.push({
-        tier: tier,
-        timestamp: new Date().toISOString()
-    });
-    localStorage.setItem('paymentClicks', JSON.stringify(clicks));
-}
+    <!-- Main App Container -->
+    <div id="appContainer" style="display: none;">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1 class="logo">FitPlanner<span class="logo-pro">Pro</span></h1>
+                <div class="header-user">
+                    <button onclick="showQuickGuide()" class="btn-help" title="Quick Guide & Keyboard Shortcuts">
+                        ❓ Help
+                    </button>
+                    <span id="userEmail" class="user-email"></span>
+                    <span id="userTier" class="user-tier"></span>
+                    <button onclick="handleLogout()" class="btn-logout">Logout</button>
+                </div>
+            </div>
+        </header>
 
-// Get user's current tier
-function getUserTier() {
-    const currentUser = getCurrentUser();
-    return currentUser ? currentUser.tier : 'FREE';
-}
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('nutrition')">Nutrition Tracker</button>
+            <button class="tab-btn" onclick="switchTab('goals')" id="goalsTab">
+                <span>Nutrition Goals</span>
+                <span class="lock-icon" id="goalsLock">🔒</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('workouts')" id="workoutsTab">
+                <span>Workout Plans</span>
+                <span class="lock-icon" id="workoutsLock">🔒</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('pricing')">Upgrade</button>
+        </nav>
 
-// Check if user has access to feature
-function hasFeatureAccess(feature) {
-    const tier = getUserTier();
-    
-    switch(feature) {
-        case 'nutrition_tracking':
-            return true; // Available to all tiers
-        
-        case 'nutrition_goals':
-            return ['PRO', 'STANDARD', 'ELITE'].includes(tier);
-        
-        case 'workout_plans':
-            return tier === 'ELITE';
-        
-        default:
-            return false;
-    }
-}
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Nutrition Tracker Tab -->
+            <div id="nutritionTab" class="tab-content active">
+                <div class="section-header">
+                    <h2>Daily Nutrition Tracker</h2>
+                    <p class="section-subtitle">Track your macros and stay on target</p>
+                </div>
+                
+                <div class="tracker-grid">
+                    <div class="tracker-card">
+                        <div class="card-header">
+                            <h3>Add Today's Nutrition</h3>
+                            <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
+                                💡 Tip: Use arrow keys or scroll wheel to adjust values
+                            </p>
+                        </div>
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <label for="caloriesInput">
+                                    Calories
+                                    <span class="input-hint" title="Total energy from food">ℹ️</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="caloriesInput" 
+                                    placeholder="e.g., 450"
+                                    min="0"
+                                    step="1"
+                                    autocomplete="off"
+                                >
+                            </div>
+                            <div class="input-group">
+                                <label for="proteinInput">
+                                    Protein (g)
+                                    <span class="input-hint" title="Helps build muscle">ℹ️</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="proteinInput" 
+                                    placeholder="e.g., 30"
+                                    min="0"
+                                    step="1"
+                                    autocomplete="off"
+                                >
+                            </div>
+                            <div class="input-group">
+                                <label for="carbsInput">
+                                    Carbs (g)
+                                    <span class="input-hint" title="Primary energy source">ℹ️</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="carbsInput" 
+                                    placeholder="e.g., 45"
+                                    min="0"
+                                    step="1"
+                                    autocomplete="off"
+                                >
+                            </div>
+                            <div class="input-group">
+                                <label for="sugarInput">
+                                    Sugar (g)
+                                    <span class="input-hint" title="Part of total carbs">ℹ️</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="sugarInput" 
+                                    placeholder="e.g., 10"
+                                    min="0"
+                                    step="1"
+                                    autocomplete="off"
+                                >
+                            </div>
+                        </div>
+                        <button onclick="addNutritionEntry()" class="btn-primary" style="width: 100%; margin-top: 1rem;">
+                            <span style="font-size: 1.1rem;">➕ Add Entry</span>
+                        </button>
+                    </div>
 
-// Show upgrade prompt
-function showUpgradePrompt(feature) {
-    let message = '';
-    let tier = '';
-    
-    if (feature === 'nutrition_goals') {
-        message = 'Upgrade to Basic Pack or higher to set nutrition goals and track your progress!';
-        tier = 'PRO';
-    } else if (feature === 'workout_plans') {
-        message = 'Upgrade to Premium Pack to access complete workout plans!';
-        tier = 'ELITE';
-    }
-    
-    if (confirm(message + '\n\nWould you like to see upgrade options?')) {
-        switchTab('pricing');
-    }
-}
+                    <div class="tracker-card summary-card">
+                        <div class="card-header">
+                            <h3>📊 Today's Summary</h3>
+                            <p style="color: var(--color-text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">
+                                <span id="todayDate"></span>
+                            </p>
+                        </div>
+                        <div class="summary-stats">
+                            <div class="stat-item">
+                                <div class="stat-icon">🔥</div>
+                                <div>
+                                    <span class="stat-label">Calories</span>
+                                    <span class="stat-value" id="totalCalories">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-icon">💪</div>
+                                <div>
+                                    <span class="stat-label">Protein</span>
+                                    <span class="stat-value" id="totalProtein">0g</span>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-icon">⚡</div>
+                                <div>
+                                    <span class="stat-label">Carbs</span>
+                                    <span class="stat-value" id="totalCarbs">0g</span>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-icon">🍬</div>
+                                <div>
+                                    <span class="stat-label">Sugar</span>
+                                    <span class="stat-value" id="totalSugar">0g</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="clearTodayEntries()" class="btn-secondary" style="width: 100%;">
+                            🗑️ Clear Today's Entries
+                        </button>
+                    </div>
+                </div>
 
-// Initialize payment tracking on links
-document.addEventListener('DOMContentLoaded', function() {
-    const paymentLinks = document.querySelectorAll('a[href*="square.link"]');
-    
-    paymentLinks.forEach(link => {
-        link.addEventListener('click', function() {
-            const url = this.href;
-            
-            // Determine tier based on URL
-            if (url.includes('EaNUJ0gy')) {
-                trackPaymentClick('PRO');
-            } else if (url.includes('0cNYptZb')) {
-                trackPaymentClick('STANDARD');
-            } else if (url.includes('6Y9uWLVv')) {
-                trackPaymentClick('ELITE');
-            } else if (url.includes('91I3ruxV')) {
-                trackPaymentClick('DONATION');
-            }
-        });
-    });
-});
+                <div class="history-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0;">📝 Recent Entries</h3>
+                        <span style="color: var(--color-text-secondary); font-size: 0.85rem;">Last 10 entries</span>
+                    </div>
+                    <div id="entriesList" class="entries-list"></div>
+                </div>
+            </div>
 
-// Helper function to construct redirect URL with unlock parameter
-function getSquarePaymentUrl(tier, baseUrl) {
-    const redirectUrl = window.location.origin + window.location.pathname + '?unlock=' + tier;
-    
-    // Note: Square payment links don't support automatic redirect parameters
-    // This would need to be configured in Square dashboard
-    // For now, we rely on manual URL construction after payment
-    
-    return baseUrl;
-}
+            <!-- Nutrition Goals Tab -->
+            <div id="goalsTab" class="tab-content">
+                <div class="section-header">
+                    <h2>Nutrition Goals<span id="personalizedBadgeNutrition"></span></h2>
+                    <p class="section-subtitle">Set your daily targets and track progress</p>
+                </div>
 
-// Manual unlock for testing (used by admin panel)
-function manualUnlock(tier) {
-    if (confirm(`Manually unlock ${tier} tier?\n\nThis is for testing purposes only.`)) {
-        handleUnlock(tier);
-    }
-}
+                <!-- Profile Banner -->
+                <div id="nutritionProfileBanner" style="display: none;" class="profile-banner">
+                    <div class="profile-info">
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Age</span>
+                            <span class="profile-stat-value" id="profileAge">--</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Weight</span>
+                            <span class="profile-stat-value" id="profileWeight">--</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Goal</span>
+                            <span class="profile-stat-value" id="profileGoal">--</span>
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-edit-profile" onclick="editProfile()">✏️ Update Profile</button>
+                    </div>
+                </div>
+
+                <!-- Macro Calculator Tool -->
+                <div class="calculator-section">
+                    <div class="calculator-card">
+                        <div class="calculator-header">
+                            <h3>🧮 Macro Calculator</h3>
+                            <p>Calculate your personalized nutrition targets</p>
+                        </div>
+                        <div class="calculator-inputs">
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label>Age</label>
+                                    <input type="number" id="calcAge" placeholder="25">
+                                </div>
+                                <div class="input-group">
+                                    <label>Gender</label>
+                                    <select id="calcGender">
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label>Weight (lbs)</label>
+                                    <input type="number" id="calcWeight" placeholder="170">
+                                </div>
+                                <div class="input-group">
+                                    <label>Height (inches)</label>
+                                    <input type="number" id="calcHeight" placeholder="70">
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>Activity Level</label>
+                                <select id="calcActivity">
+                                    <option value="1.2">Sedentary (little or no exercise)</option>
+                                    <option value="1.375">Lightly active (1-3 days/week)</option>
+                                    <option value="1.55" selected>Moderately active (3-5 days/week)</option>
+                                    <option value="1.725">Very active (6-7 days/week)</option>
+                                    <option value="1.9">Extremely active (athlete)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Goal</label>
+                                <select id="calcGoal">
+                                    <option value="cut">Fat Loss (Cutting)</option>
+                                    <option value="maintain" selected>Maintain Weight</option>
+                                    <option value="bulk">Muscle Gain (Bulking)</option>
+                                </select>
+                            </div>
+                            <button onclick="calculateMacros()" class="btn-primary">Calculate My Macros</button>
+                        </div>
+                        <div id="calculatorResults" class="calculator-results" style="display: none;">
+                            <h4>Your Personalized Targets</h4>
+                            <div class="results-grid">
+                                <div class="result-item">
+                                    <span class="result-label">Calories</span>
+                                    <span class="result-value" id="resultCalories">0</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Protein</span>
+                                    <span class="result-value" id="resultProtein">0g</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Carbs</span>
+                                    <span class="result-value" id="resultCarbs">0g</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Fats</span>
+                                    <span class="result-value" id="resultFats">0g</span>
+                                </div>
+                            </div>
+                            <button onclick="applyCalculatedMacros()" class="btn-secondary">Apply These Goals</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Goal Setting -->
+                <div class="goals-container">
+                    <div class="tracker-card">
+                        <div class="card-header">
+                            <h3>Set Your Goals</h3>
+                            <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
+                                Customize your daily nutrition targets
+                            </p>
+                        </div>
+                        <div class="input-group">
+                            <label>Target Calories</label>
+                            <input type="number" id="goalCalories" placeholder="2000">
+                            <small style="color: var(--color-text-secondary); display: block; margin-top: 0.25rem;">
+                                Recommended: 1500-2500 for weight loss, 2500-3500 for muscle gain
+                            </small>
+                        </div>
+                        <div class="input-group">
+                            <label>Target Protein (g)</label>
+                            <input type="number" id="goalProtein" placeholder="150">
+                            <small style="color: var(--color-text-secondary); display: block; margin-top: 0.25rem;">
+                                Recommended: 0.8-1.2g per lb of body weight
+                            </small>
+                        </div>
+                        <div class="input-group">
+                            <label>Target Carbohydrates (g)</label>
+                            <input type="number" id="goalCarbs" placeholder="200">
+                            <small style="color: var(--color-text-secondary); display: block; margin-top: 0.25rem;">
+                                Recommended: 45-65% of total calories
+                            </small>
+                        </div>
+                        <div class="input-group">
+                            <label>Max Sugar (g)</label>
+                            <input type="number" id="goalSugar" placeholder="50">
+                            <small style="color: var(--color-text-secondary); display: block; margin-top: 0.25rem;">
+                                Recommended: Less than 50g per day
+                            </small>
+                        </div>
+                        <button onclick="saveGoals()" class="btn-primary">Save Goals</button>
+                    </div>
+
+                    <div class="tracker-card">
+                        <div class="card-header">
+                            <h3>Current Goals</h3>
+                        </div>
+                        <div class="summary-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Target Calories</span>
+                                <span class="stat-value" id="displayGoalCalories">Not Set</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Target Protein</span>
+                                <span class="stat-value" id="displayGoalProtein">Not Set</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Target Carbs</span>
+                                <span class="stat-value" id="displayGoalCarbs">Not Set</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Max Sugar</span>
+                                <span class="stat-value" id="displayGoalSugar">Not Set</span>
+                            </div>
+                        </div>
+                        <div class="macro-breakdown" id="macroBreakdown" style="display: none;">
+                            <h4>Macro Breakdown</h4>
+                            <div class="breakdown-item">
+                                <span>Protein:</span>
+                                <span id="proteinPercentage">0%</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span>Carbs:</span>
+                                <span id="carbsPercentage">0%</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span>Fats:</span>
+                                <span id="fatsPercentage">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Progress -->
+                <div class="goal-progress-section">
+                    <h3>Today's Progress</h3>
+                    <div class="progress-grid">
+                        <div class="progress-card">
+                            <div class="progress-header">
+                                <span class="progress-label">Calories</span>
+                                <span class="progress-percentage" id="caloriesProgressText">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="caloriesProgress" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-details">
+                                <span id="caloriesConsumed">0</span> / <span id="caloriesTarget">0</span>
+                                <span id="caloriesRemaining" class="remaining-text"></span>
+                            </div>
+                        </div>
+
+                        <div class="progress-card">
+                            <div class="progress-header">
+                                <span class="progress-label">Protein</span>
+                                <span class="progress-percentage" id="proteinProgressText">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="proteinProgress" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-details">
+                                <span id="proteinConsumed">0</span>g / <span id="proteinTarget">0</span>g
+                                <span id="proteinRemaining" class="remaining-text"></span>
+                            </div>
+                        </div>
+
+                        <div class="progress-card">
+                            <div class="progress-header">
+                                <span class="progress-label">Carbohydrates</span>
+                                <span class="progress-percentage" id="carbsProgressText">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="carbsProgress" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-details">
+                                <span id="carbsConsumed">0</span>g / <span id="carbsTarget">0</span>g
+                                <span id="carbsRemaining" class="remaining-text"></span>
+                            </div>
+                        </div>
+
+                        <div class="progress-card">
+                            <div class="progress-header">
+                                <span class="progress-label">Sugar</span>
+                                <span class="progress-percentage" id="sugarProgressText">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill sugar-progress" id="sugarProgress" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-details">
+                                <span id="sugarConsumed">0</span>g / <span id="sugarTarget">50</span>g max
+                                <span id="sugarRemaining" class="remaining-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Trends -->
+                <div class="weekly-trends">
+                    <h3>7-Day Trends</h3>
+                    <div class="trends-grid">
+                        <div class="trend-card">
+                            <div class="trend-header">
+                                <span>📊 Average Daily Calories</span>
+                            </div>
+                            <div class="trend-value" id="avgCalories">0</div>
+                            <div class="trend-comparison" id="caloriesTrend"></div>
+                        </div>
+                        <div class="trend-card">
+                            <div class="trend-header">
+                                <span>💪 Average Daily Protein</span>
+                            </div>
+                            <div class="trend-value" id="avgProtein">0g</div>
+                            <div class="trend-comparison" id="proteinTrend"></div>
+                        </div>
+                        <div class="trend-card">
+                            <div class="trend-header">
+                                <span>🎯 Goal Adherence</span>
+                            </div>
+                            <div class="trend-value" id="adherenceRate">0%</div>
+                            <div class="trend-comparison" id="adherenceTrend"></div>
+                        </div>
+                        <div class="trend-card">
+                            <div class="trend-header">
+                                <span>🔥 Consistency Streak</span>
+                            </div>
+                            <div class="trend-value" id="consistencyStreak">0 days</div>
+                            <div class="trend-comparison" id="streakTrend"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meal Planning Suggestions -->
+                <div class="meal-suggestions">
+                    <h3>💡 Smart Meal Suggestions</h3>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">Based on your remaining macros for today</p>
+                    <div class="suggestions-grid" id="mealSuggestions">
+                        <!-- Populated by JavaScript based on remaining macros -->
+                    </div>
+                </div>
+
+                <!-- Weekly Meal Planner -->
+                <div class="meal-planner-section">
+                    <div class="section-header-inline">
+                        <h3>📅 Weekly Meal Planner</h3>
+                        <button onclick="generateWeeklyMealPlan()" class="btn-secondary">Generate Meal Plan</button>
+                    </div>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">
+                        AI-powered meal planning based on your nutrition goals. Get a full week of balanced meals instantly.
+                    </p>
+                    <div id="weeklyMealPlan" class="weekly-meal-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Macro-Friendly Recipe Database -->
+                <div class="recipe-database">
+                    <h3>🍽️ Macro-Friendly Recipe Database</h3>
+                    <div class="recipe-filters">
+                        <button class="filter-btn active" onclick="filterRecipes('all')">All Recipes</button>
+                        <button class="filter-btn" onclick="filterRecipes('breakfast')">Breakfast</button>
+                        <button class="filter-btn" onclick="filterRecipes('lunch')">Lunch</button>
+                        <button class="filter-btn" onclick="filterRecipes('dinner')">Dinner</button>
+                        <button class="filter-btn" onclick="filterRecipes('snacks')">Snacks</button>
+                        <button class="filter-btn" onclick="filterRecipes('high-protein')">High Protein</button>
+                        <button class="filter-btn" onclick="filterRecipes('low-carb')">Low Carb</button>
+                    </div>
+                    <div id="recipeGrid" class="recipe-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Pro Tips -->
+                <div class="goal-tips">
+                    <h4>💡 Pro Nutrition Tips</h4>
+                    <ul>
+                        <li>Stay within 10% of your calorie goal for optimal results</li>
+                        <li>Hit your protein target every day to preserve muscle mass during cuts</li>
+                        <li>Time your carbs around workouts (pre/post) for better performance and recovery</li>
+                        <li>Keep sugar under 50g to avoid energy crashes and insulin spikes</li>
+                        <li>Drink at least 0.5oz of water per lb of body weight daily</li>
+                        <li>Spread protein intake across 4-6 meals for maximum muscle protein synthesis</li>
+                        <li>Include healthy fats (avocado, nuts, olive oil) for hormone production</li>
+                        <li>Track consistently for at least 2 weeks before adjusting macros</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Workout Plans Tab -->
+            <div id="workoutsTab" class="tab-content">
+                <div class="section-header">
+                    <h2>Workout Plans<span id="personalizedBadgeWorkout"></span></h2>
+                    <p class="section-subtitle">Your complete Push/Pull/Legs training program</p>
+                </div>
+
+                <!-- Profile Banner -->
+                <div id="workoutProfileBanner" style="display: none;" class="profile-banner">
+                    <div class="profile-info">
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Fitness Level</span>
+                            <span class="profile-stat-value" id="profileFitnessLevel">--</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Workout Days</span>
+                            <span class="profile-stat-value" id="profileWorkoutDays">--</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Equipment</span>
+                            <span class="profile-stat-value" id="profileEquipment">--</span>
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-edit-profile" onclick="editProfile()">✏️ Update Profile</button>
+                    </div>
+                </div>
+
+                <!-- Program Overview -->
+                <div class="workout-intro">
+                    <div class="workout-info-card">
+                        <h3>🏋️ About This Program</h3>
+                        <p>The Push/Pull/Legs split is one of the most effective training programs for building muscle and strength. Train 3-6 days per week with at least one rest day between repeated muscle groups.</p>
+                        <div class="workout-schedule">
+                            <div class="schedule-item">
+                                <strong>Beginner (3 days/week):</strong> Push → Rest → Pull → Rest → Legs → Rest → Rest
+                            </div>
+                            <div class="schedule-item">
+                                <strong>Intermediate (4-5 days/week):</strong> Push → Pull → Rest → Legs → Push → Pull → Rest
+                            </div>
+                            <div class="schedule-item">
+                                <strong>Advanced (6 days/week):</strong> Push → Pull → Legs → Push → Pull → Legs → Rest
+                            </div>
+                        </div>
+                        <div class="program-stats">
+                            <div class="stat-badge">
+                                <span class="badge-icon">⏱️</span>
+                                <span class="badge-text">60-90 min per session</span>
+                            </div>
+                            <div class="stat-badge">
+                                <span class="badge-icon">📈</span>
+                                <span class="badge-text">Progressive overload focused</span>
+                            </div>
+                            <div class="stat-badge">
+                                <span class="badge-icon">💪</span>
+                                <span class="badge-text">Muscle & strength building</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workout Progress Tracker -->
+                <div class="workout-tracker-section">
+                    <h3>📊 This Week's Training Log</h3>
+                    <div class="week-tracker">
+                        <div class="day-check" onclick="toggleWorkoutDay('mon')">
+                            <div class="day-label">Mon</div>
+                            <div class="check-circle" id="check-mon"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('tue')">
+                            <div class="day-label">Tue</div>
+                            <div class="check-circle" id="check-tue"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('wed')">
+                            <div class="day-label">Wed</div>
+                            <div class="check-circle" id="check-wed"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('thu')">
+                            <div class="day-label">Thu</div>
+                            <div class="check-circle" id="check-thu"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('fri')">
+                            <div class="day-label">Fri</div>
+                            <div class="check-circle" id="check-fri"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('sat')">
+                            <div class="day-label">Sat</div>
+                            <div class="check-circle" id="check-sat"></div>
+                        </div>
+                        <div class="day-check" onclick="toggleWorkoutDay('sun')">
+                            <div class="day-label">Sun</div>
+                            <div class="check-circle" id="check-sun"></div>
+                        </div>
+                    </div>
+                    <div class="week-summary">
+                        <span id="weekWorkouts">0</span> workouts this week • 
+                        <span id="weekStreak">0</span> day streak
+                    </div>
+                </div>
+
+                <!-- Workout Customization -->
+                <div class="workout-customization">
+                    <h3>⚙️ Customize Your Program</h3>
+                    <div class="customization-grid">
+                        <div class="custom-card">
+                            <h4>Training Frequency</h4>
+                            <select id="trainingFrequency" onchange="updateWorkoutSchedule()">
+                                <option value="3">3 Days/Week (Beginner)</option>
+                                <option value="4">4 Days/Week (Intermediate)</option>
+                                <option value="5">5 Days/Week (Intermediate+)</option>
+                                <option value="6" selected>6 Days/Week (Advanced)</option>
+                            </select>
+                        </div>
+                        <div class="custom-card">
+                            <h4>Session Duration</h4>
+                            <select id="sessionDuration">
+                                <option value="45">45 minutes (Condensed)</option>
+                                <option value="60" selected>60 minutes (Standard)</option>
+                                <option value="90">90 minutes (Extended)</option>
+                            </select>
+                        </div>
+                        <div class="custom-card">
+                            <h4>Primary Goal</h4>
+                            <select id="workoutGoal">
+                                <option value="strength">Strength Focus</option>
+                                <option value="hypertrophy" selected>Muscle Building</option>
+                                <option value="endurance">Muscular Endurance</option>
+                                <option value="athletic">Athletic Performance</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rest Timer Tool -->
+                <div class="rest-timer-section">
+                    <h3>⏱️ Built-In Rest Timer</h3>
+                    <div class="timer-container">
+                        <div class="timer-display">
+                            <span id="timerMinutes">02</span>:<span id="timerSeconds">00</span>
+                        </div>
+                        <div class="timer-controls">
+                            <button onclick="setTimer(60)" class="btn-timer-preset">1:00</button>
+                            <button onclick="setTimer(90)" class="btn-timer-preset">1:30</button>
+                            <button onclick="setTimer(120)" class="btn-timer-preset">2:00</button>
+                            <button onclick="setTimer(180)" class="btn-timer-preset">3:00</button>
+                        </div>
+                        <div class="timer-buttons">
+                            <button onclick="startTimer()" class="btn-timer-start">Start</button>
+                            <button onclick="pauseTimer()" class="btn-timer-pause">Pause</button>
+                            <button onclick="resetTimer()" class="btn-timer-reset">Reset</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="workouts-grid">
+                    <!-- Push Day -->
+                    <div class="workout-card">
+                        <div class="workout-header push">
+                            <h3>Push Day</h3>
+                            <span class="workout-tag">Chest, Shoulders, Triceps</span>
+                        </div>
+                        <div class="workout-body">
+                            <div class="workout-description">
+                                <p><strong>Focus:</strong> Pushing movements that target chest, shoulders, and triceps. Rest 2-3 minutes between heavy sets, 60-90 seconds for accessories.</p>
+                                <p><strong>Warm-up:</strong> 5-10 min light cardio + arm circles, shoulder rotations, push-up variations</p>
+                            </div>
+                            <ul class="workout-exercises">
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">1. Barbell Bench Press</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Lower to mid-chest, keep elbows at 45°, press explosively, squeeze chest at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Pectorals | Secondary: Anterior deltoids, triceps</div>
+                                        <div class="exercise-tip">📊 <strong>Progression:</strong> Add 2.5-5lbs when you hit 4x10 with good form</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">2. Overhead Press (Barbell or Dumbbell)</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Core tight, glutes squeezed, press straight up, full lockout at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Deltoids (all heads) | Secondary: Upper chest, triceps, core</div>
+                                        <div class="exercise-tip">⚠️ <strong>Safety:</strong> Don't arch lower back excessively, keep wrists straight</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">3. Incline Dumbbell Press</div>
+                                        <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> 30-45° incline, full range of motion, control the descent</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Upper chest | Secondary: Front delts, triceps</div>
+                                        <div class="exercise-tip">🔄 <strong>Variation:</strong> Try different incline angles to target upper chest fibers</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">4. Lateral Raises</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Slight bend in elbows, lead with elbows not hands, raise to shoulder height</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Lateral deltoids (side delts)</div>
+                                        <div class="exercise-tip">⚡ <strong>Tempo:</strong> 2 sec up, 1 sec squeeze, 2 sec down for maximum tension</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">5. Tricep Dips (Weighted if possible)</div>
+                                        <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Lean forward 20-30° for chest emphasis, upright for triceps</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Triceps, lower chest | Secondary: Front delts</div>
+                                        <div class="exercise-tip">📈 <strong>Progression:</strong> Add weight belt when bodyweight becomes easy</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">6. Cable Flyes</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Slight bend in elbows, squeeze pecs together at center, control return</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Chest (isolation)</div>
+                                        <div class="exercise-tip">🔥 <strong>Finisher:</strong> Drop set on last set for maximum pump</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">7. Overhead Tricep Extension</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Keep elbows stationary, full stretch at bottom, squeeze at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Triceps (long head emphasis)</div>
+                                        <div class="exercise-tip">🎵 <strong>Cue:</strong> "Only forearms move" - elbows stay fixed in space</div>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div class="workout-footer">
+                                <button class="btn-workout-note" onclick="alert('Track your weights! Write down your numbers for progressive overload.')">📝 Add Workout Notes</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pull Day -->
+                    <div class="workout-card">
+                        <div class="workout-header pull">
+                            <h3>Pull Day</h3>
+                            <span class="workout-tag">Back, Biceps, Rear Delts</span>
+                        </div>
+                        <div class="workout-body">
+                            <div class="workout-description">
+                                <p><strong>Focus:</strong> Pulling movements for a thick, wide back and strong biceps. Rest 2-3 minutes between heavy compounds, 60-90 seconds for accessories.</p>
+                                <p><strong>Warm-up:</strong> 5-10 min rowing/biking + band pull-aparts, dead hangs, light rows</p>
+                            </div>
+                            <ul class="workout-exercises">
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">1. Deadlifts (Conventional or Romanian)</div>
+                                        <div class="exercise-sets">4 sets × 6-8 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Flat back, chest up, drive through heels, hips and shoulders rise together</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Entire posterior chain | Secondary: Traps, forearms, core</div>
+                                        <div class="exercise-tip">⚠️ <strong>Safety:</strong> Master form with lighter weight first, use mixed grip or straps for heavy sets</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">2. Pull-ups or Lat Pulldowns</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Pull to upper chest, squeeze lats at bottom, control the ascent</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Lats (width) | Secondary: Biceps, rear delts, mid-back</div>
+                                        <div class="exercise-tip">📈 <strong>Progression:</strong> Add weight belt for pull-ups, increase weight for pulldowns</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">3. Barbell Rows</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> 45° torso angle, pull to lower chest, squeeze shoulder blades together</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Mid-back thickness | Secondary: Lats, rear delts, biceps</div>
+                                        <div class="exercise-tip">🔄 <strong>Variation:</strong> Underhand grip emphasizes lower lats and biceps</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">4. Seated Cable Rows</div>
+                                        <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Chest out, pull to lower abs, squeeze shoulder blades, 2 sec hold at contraction</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Mid-back, rhomboids | Secondary: Lats, biceps</div>
+                                        <div class="exercise-tip">⚡ <strong>Mind-Muscle:</strong> Focus on pulling with elbows, not hands</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">5. Face Pulls</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Pull rope to face level, externally rotate shoulders at end, squeeze rear delts</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Rear deltoids | Secondary: Mid-back, rotator cuff</div>
+                                        <div class="exercise-tip">🏥 <strong>Health:</strong> Essential for shoulder health and posture correction</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">6. Barbell Curls</div>
+                                        <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Elbows stationary against ribs, full ROM, squeeze biceps at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Biceps brachii | Secondary: Forearms</div>
+                                        <div class="exercise-tip">⚠️ <strong>Common Mistake:</strong> Don't swing or use momentum - strict form only</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">7. Hammer Curls</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Neutral grip (thumbs up), curl together or alternating, control the negative</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Brachialis, brachioradialis | Secondary: Biceps</div>
+                                        <div class="exercise-tip">📏 <strong>Benefit:</strong> Builds arm thickness and forearm size</div>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div class="workout-footer">
+                                <button class="btn-workout-note" onclick="alert('Focus on back activation! If you only feel arms, lighten the weight.')">📝 Add Workout Notes</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Leg Day -->
+                    <div class="workout-card">
+                        <div class="workout-header legs">
+                            <h3>Leg Day</h3>
+                            <span class="workout-tag">Quads, Hamstrings, Glutes, Calves</span>
+                        </div>
+                        <div class="workout-body">
+                            <div class="workout-description">
+                                <p><strong>Focus:</strong> Build powerful legs and a strong foundation. Never skip leg day! Rest 2-3 minutes between heavy compounds.</p>
+                                <p><strong>Warm-up:</strong> 5-10 min bike/elliptical + bodyweight squats, leg swings, hip circles</p>
+                            </div>
+                            <ul class="workout-exercises">
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">1. Barbell Back Squats</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Bar on upper traps, chest up, break at hips and knees together, depth to parallel or below</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Quads, glutes | Secondary: Hamstrings, core, entire lower body</div>
+                                        <div class="exercise-tip">⚠️ <strong>Safety:</strong> Knees track over toes, keep core braced, drive through full foot</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">2. Romanian Deadlifts</div>
+                                        <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Slight knee bend, push hips back, feel hamstring stretch, squeeze glutes at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Hamstrings, glutes | Secondary: Lower back, forearms</div>
+                                        <div class="exercise-tip">🎵 <strong>Cue:</strong> "Push your butt to the wall behind you" for proper hip hinge</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">3. Leg Press</div>
+                                        <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Full ROM without lower back rounding, control the descent</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Quads | Foot position: High = hamstrings/glutes, Low = quads</div>
+                                        <div class="exercise-tip">📈 <strong>Benefit:</strong> Safe way to overload legs without spinal loading</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">4. Walking Lunges</div>
+                                        <div class="exercise-sets">3 sets × 12 reps each leg</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Long stride, back knee nearly touches ground, keep torso upright</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Quads, glutes | Secondary: Core stability, balance</div>
+                                        <div class="exercise-tip">🏃 <strong>Benefit:</strong> Unilateral strength, fixes muscle imbalances</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">5. Leg Curls (Lying or Seated)</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Full contraction at top, 2 sec squeeze, control the negative</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Hamstrings (isolation)</div>
+                                        <div class="exercise-tip">⚡ <strong>Intensity:</strong> Point toes down for extra hamstring contraction</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">6. Leg Extensions</div>
+                                        <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Full extension at top, squeeze quads hard, slow controlled descent</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Quadriceps (isolation)</div>
+                                        <div class="exercise-tip">🔥 <strong>Finisher:</strong> 1/4 reps at the end for insane quad pump</div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="exercise-header">
+                                        <div class="exercise-name">7. Standing Calf Raises</div>
+                                        <div class="exercise-sets">4 sets × 15-20 reps</div>
+                                    </div>
+                                    <div class="exercise-details">
+                                        <div class="exercise-tip">🎯 <strong>Form:</strong> Full stretch at bottom, explosive rise, 2 sec pause at top</div>
+                                        <div class="exercise-tip">💪 <strong>Muscle:</strong> Primary: Gastrocnemius (calf muscle)</div>
+                                        <div class="exercise-tip">📊 <strong>Variation:</strong> Add seated calf raises for soleus muscle development</div>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div class="workout-footer">
+                                <button class="btn-workout-note" onclick="alert('Leg day is growth day! Push hard and fuel properly after.')">📝 Add Workout Notes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training Principles -->
+                <div class="workout-tips-section">
+                    <h3>🎯 Essential Training Principles</h3>
+                    <div class="tips-grid">
+                        <div class="tip-card">
+                            <div class="tip-icon">💪</div>
+                            <h4>Progressive Overload</h4>
+                            <p>The foundation of muscle growth. Gradually increase weight, reps, or sets over time. Aim to beat your previous performance each week. Track every workout!</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">⏱️</div>
+                            <h4>Rest Periods</h4>
+                            <p>Heavy compounds (1-6 reps): 3-5 min. Moderate sets (6-12 reps): 2-3 min. High reps (12-15+): 60-90 sec. Don't rush - full recovery = better performance.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">🎯</div>
+                            <h4>Perfect Form First</h4>
+                            <p>Master technique before adding weight. Poor form = injuries and suboptimal gains. Record your sets, get feedback, and leave your ego at the door.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">🔥</div>
+                            <h4>Proper Warm-Up</h4>
+                            <p>5-10 minutes cardio to raise heart rate. Dynamic stretching for the muscles you'll train. 2-3 warm-up sets with progressively heavier weight before working sets.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">😴</div>
+                            <h4>Recovery & Sleep</h4>
+                            <p>Muscle grows during rest, not in the gym. Get 7-9 hours of sleep. Take 1-2 complete rest days per week. Deload every 4-6 weeks (reduce volume by 50%).</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">🍽️</div>
+                            <h4>Nutrition Timing</h4>
+                            <p>Pre-workout (1-2 hrs before): Carbs + moderate protein. Post-workout (30-60 min after): Fast-digesting protein + carbs to replenish glycogen and start recovery.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">💧</div>
+                            <h4>Hydration</h4>
+                            <p>Drink 0.5-1oz water per lb of bodyweight daily. More on training days. Dehydration reduces strength by 10-20%. Bring water to every workout.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">📊</div>
+                            <h4>Track Everything</h4>
+                            <p>Log every workout: exercises, sets, reps, weight used. Track body measurements weekly. Take progress photos monthly. You can't improve what you don't measure.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Exercise Form Reference -->
+                <div class="form-reference-section">
+                    <h3>📚 Exercise Form Resources</h3>
+                    <div class="reference-grid">
+                        <div class="reference-card">
+                            <h4>🎥 Video Tutorials</h4>
+                            <ul>
+                                <li>AthleanX - Form breakdowns and common mistakes</li>
+                                <li>Jeff Nippard - Science-based technique guides</li>
+                                <li>Renaissance Periodization - Muscle-specific training</li>
+                            </ul>
+                        </div>
+                        <div class="reference-card">
+                            <h4>📱 Useful Apps</h4>
+                            <ul>
+                                <li>Strong - Workout tracking and progression</li>
+                                <li>Hevy - Exercise database with demos</li>
+                                <li>MyFitnessPal - Nutrition tracking integration</li>
+                            </ul>
+                        </div>
+                        <div class="reference-card">
+                            <h4>⚠️ When to Deload</h4>
+                            <ul>
+                                <li>Persistent joint pain or unusual soreness</li>
+                                <li>3+ consecutive workouts below usual performance</li>
+                                <li>Poor sleep, low motivation, or illness</li>
+                                <li>Every 4-6 weeks as planned recovery</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Personal Records Tracker -->
+                <div class="pr-tracker-section">
+                    <h3>🏆 Personal Records</h3>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">
+                        Track your strength progress across key lifts
+                    </p>
+                    <div class="pr-grid">
+                        <div class="pr-card">
+                            <div class="pr-header">
+                                <h4>Bench Press</h4>
+                                <button onclick="openPRModal('bench')" class="btn-add-pr">+ Add PR</button>
+                            </div>
+                            <div class="pr-stats">
+                                <div class="pr-stat">
+                                    <span class="pr-label">1RM</span>
+                                    <span class="pr-value" id="bench-1rm">--</span>
+                                </div>
+                                <div class="pr-stat">
+                                    <span class="pr-label">5RM</span>
+                                    <span class="pr-value" id="bench-5rm">--</span>
+                                </div>
+                            </div>
+                            <div class="pr-history" id="bench-history"></div>
+                        </div>
+                        <div class="pr-card">
+                            <div class="pr-header">
+                                <h4>Squat</h4>
+                                <button onclick="openPRModal('squat')" class="btn-add-pr">+ Add PR</button>
+                            </div>
+                            <div class="pr-stats">
+                                <div class="pr-stat">
+                                    <span class="pr-label">1RM</span>
+                                    <span class="pr-value" id="squat-1rm">--</span>
+                                </div>
+                                <div class="pr-stat">
+                                    <span class="pr-label">5RM</span>
+                                    <span class="pr-value" id="squat-5rm">--</span>
+                                </div>
+                            </div>
+                            <div class="pr-history" id="squat-history"></div>
+                        </div>
+                        <div class="pr-card">
+                            <div class="pr-header">
+                                <h4>Deadlift</h4>
+                                <button onclick="openPRModal('deadlift')" class="btn-add-pr">+ Add PR</button>
+                            </div>
+                            <div class="pr-stats">
+                                <div class="pr-stat">
+                                    <span class="pr-label">1RM</span>
+                                    <span class="pr-value" id="deadlift-1rm">--</span>
+                                </div>
+                                <div class="pr-stat">
+                                    <span class="pr-label">5RM</span>
+                                    <span class="pr-value" id="deadlift-5rm">--</span>
+                                </div>
+                            </div>
+                            <div class="pr-history" id="deadlift-history"></div>
+                        </div>
+                        <div class="pr-card">
+                            <div class="pr-header">
+                                <h4>Overhead Press</h4>
+                                <button onclick="openPRModal('ohp')" class="btn-add-pr">+ Add PR</button>
+                            </div>
+                            <div class="pr-stats">
+                                <div class="pr-stat">
+                                    <span class="pr-label">1RM</span>
+                                    <span class="pr-value" id="ohp-1rm">--</span>
+                                </div>
+                                <div class="pr-stat">
+                                    <span class="pr-label">5RM</span>
+                                    <span class="pr-value" id="ohp-5rm">--</span>
+                                </div>
+                            </div>
+                            <div class="pr-history" id="ohp-history"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Body Measurements Tracker -->
+                <div class="measurements-section">
+                    <h3>📏 Body Measurements</h3>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">
+                        Track your physique progress beyond just weight
+                    </p>
+                    <div class="measurements-grid">
+                        <div class="measurement-input-card">
+                            <h4>Log New Measurements</h4>
+                            <div class="measurement-inputs">
+                                <div class="input-group">
+                                    <label>Weight (lbs)</label>
+                                    <input type="number" id="measureWeight" placeholder="170" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Body Fat % (optional)</label>
+                                    <input type="number" id="measureBodyFat" placeholder="15" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Chest (inches)</label>
+                                    <input type="number" id="measureChest" placeholder="40" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Waist (inches)</label>
+                                    <input type="number" id="measureWaist" placeholder="32" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Arms (inches)</label>
+                                    <input type="number" id="measureArms" placeholder="15" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Legs (inches)</label>
+                                    <input type="number" id="measureLegs" placeholder="24" step="0.1">
+                                </div>
+                                <button onclick="saveMeasurements()" class="btn-primary">Save Measurements</button>
+                            </div>
+                        </div>
+                        <div class="measurement-display-card">
+                            <h4>Progress Tracking</h4>
+                            <div id="measurementProgress" class="measurement-stats">
+                                <p style="color: var(--color-text-secondary);">No measurements recorded yet. Start tracking to see your progress!</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="measurement-history">
+                        <h4>Measurement History</h4>
+                        <div id="measurementHistory" class="history-timeline">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="workoutsTab" class="tab-content">
+                <div class="section-header">
+                    <h2>Workout Plans</h2>
+                    <p class="section-subtitle">Your complete Push/Pull/Legs training program</p>
+                </div>
+
+                <div class="workout-intro">
+                    <div class="workout-info-card">
+                        <h3>🏋️ About This Program</h3>
+                        <p>The Push/Pull/Legs split is one of the most effective training programs for building muscle and strength. Train 3-6 days per week with at least one rest day between repeated muscle groups.</p>
+                        <div class="workout-schedule">
+                            <div class="schedule-item">
+                                <strong>Beginner (3 days):</strong> Push → Rest → Pull → Rest → Legs → Rest → Rest
+                            </div>
+                            <div class="schedule-item">
+                                <strong>Intermediate (4-5 days):</strong> Push → Pull → Rest → Legs → Push → Pull → Rest
+                            </div>
+                            <div class="schedule-item">
+                                <strong>Advanced (6 days):</strong> Push → Pull → Legs → Push → Pull → Legs → Rest
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="workouts-grid">
+                    <div class="workout-card">
+                        <div class="workout-header push">
+                            <h3>Push Day</h3>
+                            <span class="workout-tag">Chest, Shoulders, Triceps</span>
+                        </div>
+                        <div class="workout-body">
+                            <div class="workout-description">
+                                <p>Focus on pushing movements that target chest, shoulders, and triceps. Rest 2-3 minutes between sets.</p>
+                            </div>
+                            <ul class="workout-exercises">
+                                <li>
+                                    <div class="exercise-name">Barbell Bench Press</div>
+                                    <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    <div class="exercise-tip">The king of chest exercises. Lower to mid-chest, press explosively.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Overhead Press (Barbell or Dumbbell)</div>
+                                    <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    <div class="exercise-tip">Build boulder shoulders. Keep core tight, press straight up.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Incline Dumbbell Press</div>
+                                    <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    <div class="exercise-tip">Target upper chest. 30-45 degree incline works best.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Lateral Raises</div>
+                                    <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    <div class="exercise-tip">Build wide shoulders. Control the weight, don't swing.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Tricep Dips (Weighted if possible)</div>
+                                    <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    <div class="exercise-tip">Lean forward for chest, stay upright for triceps focus.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Cable Flyes</div>
+                                    <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    <div class="exercise-tip">Finish with a pump. Squeeze at peak contraction.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Overhead Tricep Extension</div>
+                                    <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    <div class="exercise-tip">Get a deep stretch at the bottom, full contraction at top.</div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="workout-card">
+                        <div class="workout-header pull">
+                            <h3>Pull Day</h3>
+                            <span class="workout-tag">Back, Biceps, Rear Delts</span>
+                        </div>
+                        <div class="workout-body">
+                            <div class="workout-description">
+                                <p>Focus on pulling movements for a thick, wide back and strong biceps. Rest 2-3 minutes between heavy sets.</p>
+                            </div>
+                            <ul class="workout-exercises">
+                                <li>
+                                    <div class="exercise-name">Deadlifts (Conventional or Romanian)</div>
+                                    <div class="exercise-sets">4 sets × 6-8 reps</div>
+                                    <div class="exercise-tip">The ultimate back builder. Keep back flat, drive through heels.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Pull-ups or Lat Pulldowns</div>
+                                    <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    <div class="exercise-tip">Build width. Pull to upper chest, squeeze lats at bottom.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Barbell Rows</div>
+                                    <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    <div class="exercise-tip">Build thickness. Pull to lower chest, keep torso at 45 degrees.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Seated Cable Rows</div>
+                                    <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    <div class="exercise-tip">Squeeze shoulder blades together, control the negative.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Face Pulls</div>
+                                    <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    <div class="exercise-tip">Essential for rear delts and shoulder health. Pull to face level.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Barbell Curls</div>
+                                    <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    <div class="exercise-tip">Keep elbows stationary, full range of motion.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Hammer Curls</div>
+                                    <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    <div class="exercise-tip">Build forearm and brachialis. Alternate or together.</div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="workout-card">
+                        <div class="workout-header legs">
+                            <h3>Leg Day</h3>
+                            <span class="workout-tag">Quads, Hamstrings, Glutes, Calves</span>
+                        </div>
+                        <div class="workout-body">
+                            <div class="workout-description">
+                                <p>Never skip leg day. Build powerful legs and a strong foundation. Rest 2-3 minutes between heavy compounds.</p>
+                            </div>
+                            <ul class="workout-exercises">
+                                <li>
+                                    <div class="exercise-name">Barbell Back Squats</div>
+                                    <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    <div class="exercise-tip">The king of leg exercises. Go deep, drive through heels.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Romanian Deadlifts</div>
+                                    <div class="exercise-sets">4 sets × 8-10 reps</div>
+                                    <div class="exercise-tip">Build hamstrings and glutes. Feel the stretch, squeeze at top.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Leg Press</div>
+                                    <div class="exercise-sets">3 sets × 10-12 reps</div>
+                                    <div class="exercise-tip">High feet for hamstrings/glutes, low for quads.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Walking Lunges</div>
+                                    <div class="exercise-sets">3 sets × 12 reps each leg</div>
+                                    <div class="exercise-tip">Build single-leg strength. Keep torso upright, knee over toe.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Leg Curls (Lying or Seated)</div>
+                                    <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    <div class="exercise-tip">Isolate hamstrings. Squeeze hard at peak contraction.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Leg Extensions</div>
+                                    <div class="exercise-sets">3 sets × 12-15 reps</div>
+                                    <div class="exercise-tip">Finish quads with a pump. Control the weight, full extension.</div>
+                                </li>
+                                <li>
+                                    <div class="exercise-name">Standing Calf Raises</div>
+                                    <div class="exercise-sets">4 sets × 15-20 reps</div>
+                                    <div class="exercise-tip">Build calves. Full stretch at bottom, pause at top.</div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="workout-tips-section">
+                    <h3>🎯 Training Tips for Maximum Results</h3>
+                    <div class="tips-grid">
+                        <div class="tip-card">
+                            <div class="tip-icon">💪</div>
+                            <h4>Progressive Overload</h4>
+                            <p>Gradually increase weight, reps, or sets over time. Track your lifts and aim to beat your previous numbers.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">⏱️</div>
+                            <h4>Rest Periods</h4>
+                            <p>Heavy compounds: 2-3 minutes. Isolation work: 60-90 seconds. Don't rush between sets.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">🎯</div>
+                            <h4>Form First</h4>
+                            <p>Perfect form prevents injuries and maximizes muscle activation. Leave ego at the door.</p>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon">🔥</div>
+                            <h4>Warm Up</h4>
+                            <p>5-10 minutes cardio + dynamic stretching. Do 2 warm-up sets before heavy compounds.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing Tab -->
+            <div id="pricingTab" class="tab-content">
+                <div class="section-header">
+                    <h2>Upgrade Your Plan</h2>
+                    <p class="section-subtitle">One-time payment. Lifetime access. No subscriptions.</p>
+                </div>
+
+                <div class="pricing-grid">
+                    <!-- Free Tier -->
+                    <div class="pricing-card free-card">
+                        <div class="pricing-header free">
+                            <div class="tier-badge current">Current Plan</div>
+                            <h3>Free</h3>
+                            <div class="price-container">
+                                <span class="price">$0</span>
+                                <span class="price-period">Forever</span>
+                            </div>
+                            <p class="tier-tagline">Start tracking today</p>
+                        </div>
+                        <ul class="features-list">
+                            <li class="feature-included"><span class="check">✓</span> Daily nutrition tracking</li>
+                            <li class="feature-included"><span class="check">✓</span> 4 macro tracking</li>
+                            <li class="feature-included"><span class="check">✓</span> Cloud sync</li>
+                            <li class="feature-included"><span class="check">✓</span> Recent entries history</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Macro calculator</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Custom goals</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Meal planning</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Recipe database</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Workout plans</li>
+                        </ul>
+                        <button class="pricing-btn free-btn" disabled>
+                            <span class="btn-text">You're Here</span>
+                        </button>
+                    </div>
+
+                    <!-- Basic Pack -->
+                    <div class="pricing-card pro-card">
+                        <div class="pricing-header pro">
+                            <div class="tier-badge recommended">⭐ Best for Nutrition</div>
+                            <h3>Basic Pack</h3>
+                            <div class="price-container">
+                                <span class="price">$5</span>
+                                <span class="price-period">One-time</span>
+                            </div>
+                            <p class="tier-tagline">Personalized nutrition</p>
+                        </div>
+                        <ul class="features-list">
+                            <li class="feature-included"><span class="check">✓</span> Everything in Free</li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>AI Macro Calculator</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Custom Goals</strong></li>
+                            <li class="feature-included"><span class="check">✓</span> Progress tracking</li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Weekly Meal Planner</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>12+ Recipes</strong></li>
+                            <li class="feature-included"><span class="check">✓</span> 7-day trends</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Workout plans</li>
+                        </ul>
+                        <a href="https://square.link/u/EaNUJ0gy" class="pricing-btn pro-btn">
+                            <span class="btn-icon">🎯</span>
+                            <span class="btn-text">Unlock for $5</span>
+                            <span class="btn-arrow">→</span>
+                        </a>
+                        <div class="value-text">Save $75/year vs MyFitnessPal</div>
+                    </div>
+
+                    <!-- Standard Pack -->
+                    <div class="pricing-card standard-card">
+                        <div class="pricing-header standard">
+                            <div class="tier-badge value">Great Value</div>
+                            <h3>Standard Pack</h3>
+                            <div class="price-container">
+                                <span class="price">$10</span>
+                                <span class="price-period">One-time</span>
+                            </div>
+                            <p class="tier-tagline">Enhanced analytics</p>
+                        </div>
+                        <ul class="features-list">
+                            <li class="feature-included"><span class="check">✓</span> Everything in Basic</li>
+                            <li class="feature-included"><span class="check">✓</span> Enhanced analytics</li>
+                            <li class="feature-included"><span class="check">✓</span> Advanced visualization</li>
+                            <li class="feature-included"><span class="check">✓</span> Streak tracking</li>
+                            <li class="feature-included"><span class="check">✓</span> Priority support</li>
+                            <li class="feature-included"><span class="check">✓</span> Early access features</li>
+                            <li class="feature-excluded"><span class="cross">✗</span> Complete workout system</li>
+                        </ul>
+                        <a href="https://square.link/u/0cNYptZb" class="pricing-btn standard-btn">
+                            <span class="btn-icon">📈</span>
+                            <span class="btn-text">Unlock for $10</span>
+                            <span class="btn-arrow">→</span>
+                        </a>
+                        <div class="value-text">Save $5 vs Basic alone</div>
+                    </div>
+
+                    <!-- Premium Pack -->
+                    <div class="pricing-card elite-card featured-card">
+                        <div class="pricing-header elite">
+                            <div class="tier-badge best">🏆 BEST VALUE</div>
+                            <h3>Premium Pack</h3>
+                            <div class="price-container">
+                                <span class="price">$20</span>
+                                <span class="price-period">One-time</span>
+                            </div>
+                            <p class="tier-tagline">Complete fitness system</p>
+                        </div>
+                        <ul class="features-list">
+                            <li class="feature-included"><span class="check">✓</span> Everything in Standard</li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Complete PPL Program</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>21 Exercises + Form Guides</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Workout Tracker</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Rest Timer</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>PR Tracker</strong></li>
+                            <li class="feature-highlighted"><span class="check-highlight">✓</span> <strong>Body Measurements</strong></li>
+                            <li class="feature-included"><span class="check">✓</span> Custom workout splits</li>
+                            <li class="feature-included"><span class="check">✓</span> Equipment adaptations</li>
+                        </ul>
+                        <a href="https://square.link/u/6Y9uWLVv" class="pricing-btn elite-btn">
+                            <span class="btn-icon">🚀</span>
+                            <span class="btn-text">Get Complete System - $20</span>
+                            <span class="btn-arrow">→</span>
+                        </a>
+                        <div class="value-text premium">Replaces $100/month trainer</div>
+                    </div>
+                </div>
+
+                <!-- Trust Indicators -->
+                <div class="trust-section">
+                    <div class="trust-item">
+                        <div class="trust-icon">🔒</div>
+                        <div class="trust-content">
+                            <strong>Secure Payment</strong>
+                            <p>Powered by Square</p>
+                        </div>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">💳</div>
+                        <div class="trust-content">
+                            <strong>One-Time</strong>
+                            <p>No subscriptions</p>
+                        </div>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">⚡</div>
+                        <div class="trust-content">
+                            <strong>Instant</strong>
+                            <p>Unlocks immediately</p>
+                        </div>
+                    </div>
+                    <div class="trust-item">
+                        <div class="trust-icon">♾️</div>
+                        <div class="trust-content">
+                            <strong>Lifetime</strong>
+                            <p>Yours forever</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- How It Works -->
+                <div class="how-it-works">
+                    <h3>📱 How It Works</h3>
+                    <div class="steps-grid">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h5>Choose Plan</h5>
+                                <p>Click the button above</p>
+                            </div>
+                        </div>
+                        <div class="step-arrow">→</div>
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h5>Secure Checkout</h5>
+                                <p>Pay via Square (30 sec)</p>
+                            </div>
+                        </div>
+                        <div class="step-arrow">→</div>
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h5>Personalize</h5>
+                                <p>Quick 3-step survey</p>
+                            </div>
+                        </div>
+                        <div class="step-arrow">→</div>
+                        <div class="step-item">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h5>Start!</h5>
+                                <p>All features unlocked</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ Section for Fool-Proof UX -->
+                <div class="faq-section">
+                    <h3>❓ Questions? We Got You</h3>
+                    <div class="faq-grid">
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <strong>Q:</strong> Is this really one-time or a subscription?
+                            </div>
+                            <div class="faq-answer">
+                                <strong>A:</strong> 100% one-time payment! Pay once, access forever. No monthly fees, no renewals, no tricks.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <strong>Q:</strong> What happens after I click the button?
+                            </div>
+                            <div class="faq-answer">
+                                <strong>A:</strong> You'll go to Square's secure checkout → Pay → Automatically redirected back → Survey pops up → Features unlock instantly!
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <strong>Q:</strong> Can I try before I buy?
+                            </div>
+                            <div class="faq-answer">
+                                <strong>A:</strong> Yes! The Free tier lets you track nutrition and see the app. Upgrade anytime when you're ready for personalized features.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <strong>Q:</strong> Will this work on my phone?
+                            </div>
+                            <div class="faq-answer">
+                                <strong>A:</strong> Absolutely! Works on any device - iPhone, Android, tablet, computer. Your data syncs across all of them.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="donation-section">
+                    <p>Love FitPlanner Pro? Support development</p>
+                    <a href="https://square.link/u/91I3ruxV" class="btn-donation">❤️ Make a Donation</a>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>&copy; 2024 FitPlanner Pro. Track smarter, achieve faster.</p>
+        </footer>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+    <script src="payments.js"></script>
+    <script src="admin.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="personalization.js"></script>
+    <script src="ux-enhancements.js"></script>
+    <script src="qol-enhancements.js"></script>
+</body>
+</html>
