@@ -536,6 +536,8 @@ function updateTierDisplay() {
     if (!currentUser) return;
     
     const tierElement = document.getElementById('userTier');
+    if (!tierElement) return;
+    
     tierElement.textContent = currentUser.tier;
     
     // Update tier styling
@@ -550,3 +552,166 @@ function updateTierDisplay() {
         tierElement.style.background = 'linear-gradient(135deg, #666, #888)';
     }
 }
+
+// Update feature access based on user tier
+function updateFeatureAccess() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+        console.warn('⚠️ No current user for feature access');
+        return;
+    }
+    
+    console.log('🔐 Updating feature access for tier:', currentUser.tier);
+    
+    const tier = currentUser.tier;
+    
+    // Get tab elements
+    const goalsTab = document.getElementById('goalsTab');
+    const workoutsTab = document.getElementById('workoutsTab');
+    const goalsLock = document.getElementById('goalsLock');
+    const workoutsLock = document.getElementById('workoutsLock');
+    
+    if (!goalsTab || !workoutsTab) {
+        console.warn('⚠️ Tab elements not found');
+        return;
+    }
+    
+    // FREE tier: Lock both goals and workouts
+    if (tier === 'FREE') {
+        console.log('🔒 FREE tier - locking goals and workouts');
+        
+        // Goals tab - locked
+        goalsTab.style.opacity = '0.5';
+        goalsTab.style.cursor = 'not-allowed';
+        if (goalsLock) goalsLock.style.display = 'inline';
+        
+        // Workouts tab - locked
+        workoutsTab.style.opacity = '0.5';
+        workoutsTab.style.cursor = 'not-allowed';
+        if (workoutsLock) workoutsLock.style.display = 'inline';
+        
+        // Override onclick to show upgrade prompt
+        goalsTab.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof showUpgradePrompt === 'function') {
+                showUpgradePrompt('Nutrition Goals', 'PRO');
+            } else {
+                alert('⭐ Upgrade to PRO to access Nutrition Goals!\n\nGet personalized macro calculations and meal planning.');
+                switchTab('pricing');
+            }
+            return false;
+        };
+        
+        workoutsTab.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof showUpgradePrompt === 'function') {
+                showUpgradePrompt('Workout Plans', 'ELITE');
+            } else {
+                alert('🏆 Upgrade to ELITE to access Workout Plans!\n\nGet complete training programs and workout tracking.');
+                switchTab('pricing');
+            }
+            return false;
+        };
+    }
+    
+    // PRO tier: Unlock goals, lock workouts
+    else if (tier === 'PRO') {
+        console.log('🔓 PRO tier - unlocking goals');
+        
+        // Goals tab - unlocked
+        goalsTab.style.opacity = '1';
+        goalsTab.style.cursor = 'pointer';
+        if (goalsLock) goalsLock.style.display = 'none';
+        goalsTab.onclick = function() { switchTab('goals'); };
+        
+        // Workouts tab - locked
+        workoutsTab.style.opacity = '0.5';
+        workoutsTab.style.cursor = 'not-allowed';
+        if (workoutsLock) workoutsLock.style.display = 'inline';
+        workoutsTab.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof showUpgradePrompt === 'function') {
+                showUpgradePrompt('Workout Plans', 'ELITE');
+            } else {
+                alert('🏆 Upgrade to ELITE to access Workout Plans!');
+                switchTab('pricing');
+            }
+            return false;
+        };
+    }
+    
+    // STANDARD tier: Unlock goals, lock workouts
+    else if (tier === 'STANDARD') {
+        console.log('🔓 STANDARD tier - unlocking goals');
+        
+        // Goals tab - unlocked
+        goalsTab.style.opacity = '1';
+        goalsTab.style.cursor = 'pointer';
+        if (goalsLock) goalsLock.style.display = 'none';
+        goalsTab.onclick = function() { switchTab('goals'); };
+        
+        // Workouts tab - locked
+        workoutsTab.style.opacity = '0.5';
+        workoutsTab.style.cursor = 'not-allowed';
+        if (workoutsLock) workoutsLock.style.display = 'inline';
+        workoutsTab.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof showUpgradePrompt === 'function') {
+                showUpgradePrompt('Workout Plans', 'ELITE');
+            } else {
+                alert('🏆 Upgrade to ELITE to access Workout Plans!');
+                switchTab('pricing');
+            }
+            return false;
+        };
+    }
+    
+    // ELITE tier: Unlock everything
+    else if (tier === 'ELITE') {
+        console.log('🔓 ELITE tier - unlocking all features');
+        
+        // Goals tab - unlocked
+        goalsTab.style.opacity = '1';
+        goalsTab.style.cursor = 'pointer';
+        if (goalsLock) goalsLock.style.display = 'none';
+        goalsTab.onclick = function() { switchTab('goals'); };
+        
+        // Workouts tab - unlocked
+        workoutsTab.style.opacity = '1';
+        workoutsTab.style.cursor = 'pointer';
+        if (workoutsLock) workoutsLock.style.display = 'none';
+        workoutsTab.onclick = function() { switchTab('workouts'); };
+    }
+    
+    console.log('✅ Feature access updated');
+}
+
+// Quick upgrade function for testing (can be called from console)
+function upgradeToElite() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+        return 'No user logged in. Please log in first.';
+    }
+    
+    currentUser.tier = 'ELITE';
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    
+    // Update in Firebase if available
+    if (isFirebaseReady() && currentUser.uid) {
+        firebase.database().ref('users/' + currentUser.uid).update({ tier: 'ELITE' });
+    }
+    
+    updateTierDisplay();
+    updateFeatureAccess();
+    
+    alert('🎉 Upgraded to ELITE!\n\nAll features unlocked!\n\nYou can now access Nutrition Goals and Workout Plans.');
+    
+    return 'Success! Upgraded to ELITE tier.';
+}
+
+// Make upgrade function globally available for testing
+window.upgradeToElite = upgradeToElite;
