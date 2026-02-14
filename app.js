@@ -11,58 +11,77 @@ function switchTab(tabName) {
         return;
     }
     
-    console.log('👤 User tier:', currentUser.tier);
+    console.log('👤 Current tier:', currentUser.tier);
+    console.log('📍 Switching to tab:', tabName);
     
     // Hide all tabs
     const tabs = document.querySelectorAll('.tab-content');
-    tabs.forEach(tab => tab.classList.remove('active'));
+    tabs.forEach(tab => {
+        tab.classList.remove('active');
+    });
     
     // Remove active class from all buttons
     const buttons = document.querySelectorAll('.tab-btn');
-    buttons.forEach(btn => btn.classList.remove('active'));
+    buttons.forEach(btn => {
+        btn.classList.remove('active');
+    });
     
     // Show selected tab
-    const selectedTab = document.getElementById(tabName + 'Tab');
-    if (!selectedTab) {
-        console.error('❌ Tab element not found:', tabName + 'Tab');
+    const targetTab = document.getElementById(tabName + 'Tab');
+    if (!targetTab) {
+        console.error('❌ Tab not found:', tabName + 'Tab');
         return;
     }
     
-    selectedTab.classList.add('active');
-    console.log('✅ Activated tab:', tabName + 'Tab');
+    targetTab.classList.add('active');
+    console.log('✅ Tab content shown:', tabName + 'Tab');
     
-    // Activate the corresponding button
-    const buttonMapping = {
+    // Activate the button
+    const buttonMap = {
         'goals': 'goalsTab',
         'workouts': 'workoutsTab'
     };
     
-    if (buttonMapping[tabName]) {
-        const button = document.getElementById(buttonMapping[tabName]);
-        if (button) {
-            button.classList.add('active');
-            console.log('✅ Activated button:', buttonMapping[tabName]);
+    if (buttonMap[tabName]) {
+        const btn = document.getElementById(buttonMap[tabName]);
+        if (btn) {
+            btn.classList.add('active');
+            console.log('✅ Button activated:', buttonMap[tabName]);
         }
     } else {
-        // For tabs with inline onclick, find by onclick attribute
+        // For nutrition and pricing, find by onclick
         buttons.forEach(btn => {
-            const onclickAttr = btn.getAttribute('onclick');
-            if (onclickAttr && onclickAttr.includes(tabName)) {
+            const onclick = btn.getAttribute('onclick');
+            if (onclick && onclick.includes(tabName)) {
                 btn.classList.add('active');
             }
         });
     }
     
-    // Update displays when switching tabs
+    // Load content
+    console.log('📊 Loading content for:', tabName);
+    
     if (tabName === 'nutrition') {
-        loadNutritionData();
+        if (typeof loadNutritionData === 'function') {
+            loadNutritionData();
+        }
     } else if (tabName === 'goals') {
-        loadGoals();
-        updateGoalProgress();
+        if (typeof loadGoals === 'function') {
+            loadGoals();
+        }
+        if (typeof updateGoalProgress === 'function') {
+            updateGoalProgress();
+        }
         setTimeout(() => {
-            calculateWeeklyTrends();
-            generateMealSuggestions();
-            loadRecipes();
+            if (typeof calculateWeeklyTrends === 'function') {
+                calculateWeeklyTrends();
+            }
+            if (typeof generateMealSuggestions === 'function') {
+                generateMealSuggestions();
+            }
+            if (typeof loadRecipes === 'function') {
+                loadRecipes();
+            }
             if (typeof displayProfile === 'function') {
                 displayProfile();
             }
@@ -73,7 +92,7 @@ function switchTab(tabName) {
         }
     }
     
-    console.log('✅ Tab switch complete');
+    console.log('✅ switchTab complete');
 }
 
 // Update feature access based on tier
