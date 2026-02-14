@@ -3,19 +3,15 @@
 
 // Tab switching
 function switchTab(tabName) {
+    console.log('🔄 switchTab called:', tabName);
+    
     const currentUser = getCurrentUser();
-    if (!currentUser) return;
-    
-    // Check permissions before switching
-    if (tabName === 'goals' && currentUser.tier === 'FREE') {
-        alert('Upgrade to Basic Pack or higher to access Nutrition Goals!\n\nClick "Upgrade" tab to unlock this feature.');
+    if (!currentUser) {
+        console.error('❌ No current user');
         return;
     }
     
-    if (tabName === 'workouts' && currentUser.tier !== 'ELITE') {
-        alert('Upgrade to Premium Pack to access Workout Plans!\n\nClick "Upgrade" tab to unlock this feature.');
-        return;
-    }
+    console.log('👤 User tier:', currentUser.tier);
     
     // Hide all tabs
     const tabs = document.querySelectorAll('.tab-content');
@@ -26,14 +22,35 @@ function switchTab(tabName) {
     buttons.forEach(btn => btn.classList.remove('active'));
     
     // Show selected tab
-    document.getElementById(tabName + 'Tab').classList.add('active');
+    const selectedTab = document.getElementById(tabName + 'Tab');
+    if (!selectedTab) {
+        console.error('❌ Tab element not found:', tabName + 'Tab');
+        return;
+    }
     
-    // Add active class to clicked button
-    if (event && event.target) {
-        event.target.closest('.tab-btn').classList.add('active');
+    selectedTab.classList.add('active');
+    console.log('✅ Activated tab:', tabName + 'Tab');
+    
+    // Activate the corresponding button
+    const buttonMapping = {
+        'goals': 'goalsTab',
+        'workouts': 'workoutsTab'
+    };
+    
+    if (buttonMapping[tabName]) {
+        const button = document.getElementById(buttonMapping[tabName]);
+        if (button) {
+            button.classList.add('active');
+            console.log('✅ Activated button:', buttonMapping[tabName]);
+        }
     } else {
-        // Fallback if event is not available
-        document.querySelector(`[onclick*="${tabName}"]`).classList.add('active');
+        // For tabs with inline onclick, find by onclick attribute
+        buttons.forEach(btn => {
+            const onclickAttr = btn.getAttribute('onclick');
+            if (onclickAttr && onclickAttr.includes(tabName)) {
+                btn.classList.add('active');
+            }
+        });
     }
     
     // Update displays when switching tabs
@@ -51,15 +68,12 @@ function switchTab(tabName) {
             }
         }, 100);
     } else if (tabName === 'workouts') {
-        setTimeout(() => {
-            loadWorkoutWeek();
-            loadPRs();
-            loadMeasurements();
-            if (typeof displayProfile === 'function') {
-                displayProfile();
-            }
-        }, 100);
+        if (typeof loadWorkoutPlan === 'function') {
+            loadWorkoutPlan();
+        }
     }
+    
+    console.log('✅ Tab switch complete');
 }
 
 // Update feature access based on tier
