@@ -1,442 +1,527 @@
-// Fool-Proof UX Enhancements
-// Improves user experience with helpful messages, validation, and guidance
+// Personalization Survey System
+// Collects user data and generates customized workout/nutrition plans
 
-// ===== LOADING STATES =====
-
-function showLoading(message = 'Loading...') {
-    const loader = document.createElement('div');
-    loader.id = 'globalLoader';
-    loader.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(10, 14, 19, 0.95);
-        backdrop-filter: blur(10px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
-        animation: fadeIn 0.2s ease;
-    `;
+// Show personalization survey after tier upgrade
+function showPersonalizationSurvey(tier) {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
     
-    loader.innerHTML = `
-        <div style="text-align: center;">
-            <div class="spinner"></div>
-            <p style="color: var(--color-text); margin-top: 1rem; font-size: 1.1rem;">${message}</p>
-        </div>
-    `;
+    // Check if user already has a profile
+    const profileKey = `profile_${currentUser.email}`;
+    const existingProfile = JSON.parse(localStorage.getItem(profileKey) || 'null');
     
-    document.body.appendChild(loader);
+    // Always show survey for new tier upgrade
+    createSurveyModal(tier, existingProfile);
 }
 
-function hideLoading() {
-    const loader = document.getElementById('globalLoader');
-    if (loader) {
-        loader.style.animation = 'fadeOut 0.2s ease';
-        setTimeout(() => loader.remove(), 200);
-    }
-}
-
-// ===== CONFIRMATION DIALOGS =====
-
-function confirmDialog(message, onConfirm, onCancel) {
+// Create the survey modal
+function createSurveyModal(tier, existingProfile) {
     const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(10, 14, 19, 0.95);
-        backdrop-filter: blur(10px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        animation: fadeIn 0.2s ease;
-    `;
+    modal.id = 'personalizationModal';
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    
+    const surveyStep = existingProfile ? 2 : 1; // Skip to step 2 if profile exists
     
     modal.innerHTML = `
-        <div style="
-            background: var(--color-surface-elevated);
-            border-radius: 16px;
-            padding: 2rem;
-            max-width: 400px;
-            width: 90%;
-            text-align: center;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--color-border);
-        ">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-            <p style="color: var(--color-text); font-size: 1.1rem; line-height: 1.6; margin-bottom: 2rem;">
-                ${message}
-            </p>
-            <div style="display: flex; gap: 1rem; justify-content: center;">
-                <button id="cancelBtn" style="
-                    padding: 0.875rem 2rem;
-                    background: var(--color-surface);
-                    color: var(--color-text);
-                    border: 2px solid var(--color-border);
-                    border-radius: 10px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: var(--transition-smooth);
-                ">Cancel</button>
-                <button id="confirmBtn" style="
-                    padding: 0.875rem 2rem;
-                    background: linear-gradient(135deg, var(--color-primary), #00dd77);
-                    color: var(--color-bg);
-                    border: none;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: var(--transition-smooth);
-                ">Confirm</button>
+        <div class="modal-content personalization-modal">
+            <div class="personalization-header">
+                <h2>🎯 Let's Personalize Your Experience</h2>
+                <p>Answer a few questions to get your customized ${tier} plan</p>
+                <div class="progress-dots">
+                    <span class="dot active" id="dot1"></span>
+                    <span class="dot" id="dot2"></span>
+                    <span class="dot" id="dot3"></span>
+                </div>
+            </div>
+            
+            <!-- Step 1: Basic Info -->
+            <div class="survey-step active" id="step1">
+                <h3>About You</h3>
+                <div class="survey-inputs">
+                    <div class="input-group">
+                        <label>Age</label>
+                        <input type="number" id="surveyAge" value="${existingProfile?.age || ''}" placeholder="25" min="13" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label>Gender</label>
+                        <select id="surveyGender">
+                            <option value="male" ${existingProfile?.gender === 'male' ? 'selected' : ''}>Male</option>
+                            <option value="female" ${existingProfile?.gender === 'female' ? 'selected' : ''}>Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Current Weight (lbs)</label>
+                        <input type="number" id="surveyWeight" value="${existingProfile?.weight || ''}" placeholder="170" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Height (inches)</label>
+                        <input type="number" id="surveyHeight" value="${existingProfile?.height || ''}" placeholder="70">
+                        <small style="color: var(--color-text-secondary);">Tip: 5'10" = 70 inches</small>
+                    </div>
+                    <div class="input-group">
+                        <label>Target Weight (lbs)</label>
+                        <input type="number" id="surveyTargetWeight" value="${existingProfile?.targetWeight || ''}" placeholder="165" step="0.1">
+                    </div>
+                </div>
+                <button onclick="nextSurveyStep(2)" class="btn-primary">Next</button>
+            </div>
+            
+            <!-- Step 2: Fitness Level & Goals -->
+            <div class="survey-step" id="step2">
+                <h3>Your Fitness Journey</h3>
+                <div class="survey-inputs">
+                    <div class="input-group">
+                        <label>Primary Goal</label>
+                        <select id="surveyGoal">
+                            <option value="lose_fat" ${existingProfile?.goal === 'lose_fat' ? 'selected' : ''}>Lose Fat / Get Lean</option>
+                            <option value="build_muscle" ${existingProfile?.goal === 'build_muscle' ? 'selected' : ''}>Build Muscle / Bulk Up</option>
+                            <option value="get_toned" ${existingProfile?.goal === 'get_toned' ? 'selected' : ''}>Get Toned / Athletic</option>
+                            <option value="maintain" ${existingProfile?.goal === 'maintain' ? 'selected' : ''}>Maintain / Stay Healthy</option>
+                            <option value="strength" ${existingProfile?.goal === 'strength' ? 'selected' : ''}>Build Strength</option>
+                            <option value="endurance" ${existingProfile?.goal === 'endurance' ? 'selected' : ''}>Improve Endurance</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Current Fitness Level</label>
+                        <select id="surveyFitnessLevel">
+                            <option value="beginner" ${existingProfile?.fitnessLevel === 'beginner' ? 'selected' : ''}>Beginner (0-6 months training)</option>
+                            <option value="intermediate" ${existingProfile?.fitnessLevel === 'intermediate' ? 'selected' : ''}>Intermediate (6 months - 2 years)</option>
+                            <option value="advanced" ${existingProfile?.fitnessLevel === 'advanced' ? 'selected' : ''}>Advanced (2+ years)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Activity Level</label>
+                        <select id="surveyActivity">
+                            <option value="1.2" ${existingProfile?.activityLevel == 1.2 ? 'selected' : ''}>Sedentary (desk job, little exercise)</option>
+                            <option value="1.375" ${existingProfile?.activityLevel == 1.375 ? 'selected' : ''}>Lightly Active (1-3 days/week)</option>
+                            <option value="1.55" ${existingProfile?.activityLevel == 1.55 ? 'selected' : ''}>Moderately Active (3-5 days/week)</option>
+                            <option value="1.725" ${existingProfile?.activityLevel == 1.725 ? 'selected' : ''}>Very Active (6-7 days/week)</option>
+                            <option value="1.9" ${existingProfile?.activityLevel == 1.9 ? 'selected' : ''}>Extremely Active (athlete/physical job)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>How many days can you workout?</label>
+                        <select id="surveyWorkoutDays">
+                            <option value="3" ${existingProfile?.workoutDays == 3 ? 'selected' : ''}>3 days per week</option>
+                            <option value="4" ${existingProfile?.workoutDays == 4 ? 'selected' : ''}>4 days per week</option>
+                            <option value="5" ${existingProfile?.workoutDays == 5 ? 'selected' : ''}>5 days per week</option>
+                            <option value="6" ${existingProfile?.workoutDays == 6 ? 'selected' : ''}>6 days per week</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button onclick="previousSurveyStep(1)" class="btn-secondary">Back</button>
+                    <button onclick="nextSurveyStep(3)" class="btn-primary">Next</button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Preferences & Restrictions -->
+            <div class="survey-step" id="step3">
+                <h3>Final Details</h3>
+                <div class="survey-inputs">
+                    <div class="input-group">
+                        <label>Dietary Preferences</label>
+                        <select id="surveyDiet">
+                            <option value="none" ${existingProfile?.diet === 'none' ? 'selected' : ''}>No Restrictions</option>
+                            <option value="vegetarian" ${existingProfile?.diet === 'vegetarian' ? 'selected' : ''}>Vegetarian</option>
+                            <option value="vegan" ${existingProfile?.diet === 'vegan' ? 'selected' : ''}>Vegan</option>
+                            <option value="keto" ${existingProfile?.diet === 'keto' ? 'selected' : ''}>Keto / Low Carb</option>
+                            <option value="paleo" ${existingProfile?.diet === 'paleo' ? 'selected' : ''}>Paleo</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Equipment Available</label>
+                        <select id="surveyEquipment">
+                            <option value="full_gym" ${existingProfile?.equipment === 'full_gym' ? 'selected' : ''}>Full Gym Access</option>
+                            <option value="basic" ${existingProfile?.equipment === 'basic' ? 'selected' : ''}>Basic Equipment (dumbbells, bench)</option>
+                            <option value="minimal" ${existingProfile?.equipment === 'minimal' ? 'selected' : ''}>Minimal (bodyweight, resistance bands)</option>
+                            <option value="home" ${existingProfile?.equipment === 'home' ? 'selected' : ''}>Home Gym</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Any injuries or limitations?</label>
+                        <textarea id="surveyLimitations" placeholder="e.g., bad knee, lower back issues, shoulder injury..." style="
+                            width: 100%;
+                            padding: 0.875rem;
+                            background: var(--color-surface);
+                            border: 2px solid var(--color-border);
+                            border-radius: 10px;
+                            color: var(--color-text);
+                            font-family: inherit;
+                            min-height: 80px;
+                        ">${existingProfile?.limitations || ''}</textarea>
+                        <small style="color: var(--color-text-secondary);">This helps us modify exercises for your safety</small>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button onclick="previousSurveyStep(2)" class="btn-secondary">Back</button>
+                    <button onclick="completeSurvey()" class="btn-primary">Generate My Plan!</button>
+                </div>
             </div>
         </div>
     `;
     
     document.body.appendChild(modal);
     
-    document.getElementById('confirmBtn').onclick = () => {
-        modal.remove();
-        if (onConfirm) onConfirm();
-    };
-    
-    document.getElementById('cancelBtn').onclick = () => {
-        modal.remove();
-        if (onCancel) onCancel();
-    };
-}
-
-// ===== HELPFUL TOOLTIPS =====
-
-function showTooltip(element, message, duration = 3000) {
-    const tooltip = document.createElement('div');
-    tooltip.className = 'tooltip-message';
-    tooltip.textContent = message;
-    tooltip.style.cssText = `
-        position: absolute;
-        background: var(--color-surface-elevated);
-        color: var(--color-text);
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        box-shadow: var(--shadow-lg);
-        border: 1px solid var(--color-border);
-        z-index: 1000;
-        max-width: 250px;
-        animation: fadeInUp 0.3s ease;
-    `;
-    
-    document.body.appendChild(tooltip);
-    
-    const rect = element.getBoundingClientRect();
-    tooltip.style.top = (rect.top - tooltip.offsetHeight - 10) + 'px';
-    tooltip.style.left = (rect.left + rect.width / 2 - tooltip.offsetWidth / 2) + 'px';
-    
-    setTimeout(() => {
-        tooltip.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => tooltip.remove(), 300);
-    }, duration);
-}
-
-// ===== FORM VALIDATION WITH HELPFUL MESSAGES =====
-
-function validateEmail(email) {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-}
-
-function showFieldError(inputId, message) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    
-    // Remove existing error
-    const existingError = input.parentElement.querySelector('.field-error');
-    if (existingError) existingError.remove();
-    
-    // Add error styling
-    input.style.borderColor = 'var(--color-accent)';
-    
-    // Create error message
-    const error = document.createElement('div');
-    error.className = 'field-error';
-    error.textContent = message;
-    error.style.cssText = `
-        color: var(--color-accent);
-        font-size: 0.85rem;
-        margin-top: 0.5rem;
-        animation: fadeInUp 0.3s ease;
-    `;
-    
-    input.parentElement.appendChild(error);
-    
-    // Remove error on input
-    input.addEventListener('input', function() {
-        this.style.borderColor = '';
-        const errorEl = this.parentElement.querySelector('.field-error');
-        if (errorEl) errorEl.remove();
-    }, { once: true });
-}
-
-// ===== EMPTY STATE MESSAGES =====
-
-function showEmptyState(containerId, icon, title, message, actionText, actionCallback) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div style="
-            text-align: center;
-            padding: 3rem 2rem;
-            color: var(--color-text-secondary);
-        ">
-            <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.5;">${icon}</div>
-            <h3 style="color: var(--color-text); margin-bottom: 0.5rem; font-size: 1.5rem;">${title}</h3>
-            <p style="margin-bottom: 2rem; line-height: 1.6;">${message}</p>
-            ${actionText ? `
-                <button onclick="${actionCallback}" style="
-                    padding: 0.875rem 2rem;
-                    background: linear-gradient(135deg, var(--color-primary), #00dd77);
-                    color: var(--color-bg);
-                    border: none;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: var(--transition-smooth);
-                ">${actionText}</button>
-            ` : ''}
-        </div>
-    `;
-}
-
-// ===== SUCCESS ANIMATIONS =====
-
-function celebrateSuccess(message) {
-    const celebration = document.createElement('div');
-    celebration.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0);
-        background: linear-gradient(135deg, var(--color-primary), #00dd77);
-        color: var(--color-bg);
-        padding: 2rem 3rem;
-        border-radius: 20px;
-        font-size: 1.5rem;
-        font-weight: 700;
-        text-align: center;
-        z-index: 10000;
-        box-shadow: 0 0 50px rgba(0, 255, 136, 0.5);
-        animation: celebrationPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    `;
-    
-    celebration.innerHTML = `
-        <div style="font-size: 4rem; margin-bottom: 1rem;">🎉</div>
-        ${message}
-    `;
-    
-    document.body.appendChild(celebration);
-    
-    setTimeout(() => {
-        celebration.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => celebration.remove(), 300);
-    }, 2000);
-}
-
-// ===== PROGRESS INDICATORS =====
-
-function showProgressBar(message, progress = 0) {
-    let progressEl = document.getElementById('globalProgress');
-    
-    if (!progressEl) {
-        progressEl = document.createElement('div');
-        progressEl.id = 'globalProgress';
-        progressEl.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: var(--color-surface-elevated);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--color-border);
-            min-width: 300px;
-            z-index: 10000;
-            animation: slideInRight 0.3s ease;
-        `;
-        document.body.appendChild(progressEl);
-    }
-    
-    progressEl.innerHTML = `
-        <p style="color: var(--color-text); margin-bottom: 0.75rem; font-weight: 600;">${message}</p>
-        <div style="
-            width: 100%;
-            height: 8px;
-            background: var(--color-surface);
-            border-radius: 4px;
-            overflow: hidden;
-        ">
-            <div style="
-                width: ${progress}%;
-                height: 100%;
-                background: linear-gradient(90deg, var(--color-primary), #00dd77);
-                transition: width 0.3s ease;
-                border-radius: 4px;
-            "></div>
-        </div>
-        <p style="color: var(--color-text-secondary); margin-top: 0.5rem; font-size: 0.85rem;">${progress}% complete</p>
-    `;
-}
-
-function hideProgressBar() {
-    const progressEl = document.getElementById('globalProgress');
-    if (progressEl) {
-        progressEl.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => progressEl.remove(), 300);
+    // If existing profile, skip to step 2
+    if (existingProfile && surveyStep === 2) {
+        nextSurveyStep(2);
     }
 }
 
-// ===== HELPFUL FIRST-TIME USER TIPS =====
-
-function showFirstTimeTip(key, message, duration = 5000) {
-    // Check if user has seen this tip
-    if (localStorage.getItem(`tip_seen_${key}`)) return;
+// Navigate survey steps
+function nextSurveyStep(step) {
+    // Validate current step
+    const currentStep = document.querySelector('.survey-step.active');
+    const inputs = currentStep.querySelectorAll('input[required], select[required]');
     
-    const tip = document.createElement('div');
-    tip.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, var(--color-primary), #00dd77);
-        color: var(--color-bg);
-        padding: 1rem 2rem;
-        border-radius: 12px;
-        font-size: 0.95rem;
-        max-width: 500px;
-        box-shadow: var(--shadow-lg);
-        z-index: 10000;
-        animation: slideInUp 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    `;
-    
-    tip.innerHTML = `
-        <span style="font-size: 1.5rem;">💡</span>
-        <span style="flex: 1;">${message}</span>
-        <button onclick="this.parentElement.remove(); localStorage.setItem('tip_seen_${key}', 'true');" style="
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-        ">Got it!</button>
-    `;
-    
-    document.body.appendChild(tip);
-    
-    setTimeout(() => {
-        if (tip.parentElement) {
-            tip.style.animation = 'fadeOut 0.3s ease';
-            setTimeout(() => tip.remove(), 300);
-            localStorage.setItem(`tip_seen_${key}`, 'true');
+    for (let input of inputs) {
+        if (!input.value) {
+            alert('Please fill in all required fields');
+            return;
         }
-    }, duration);
+    }
+    
+    // Hide current step
+    document.querySelectorAll('.survey-step').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+    
+    // Show next step
+    document.getElementById(`step${step}`).classList.add('active');
+    document.getElementById(`dot${step}`).classList.add('active');
 }
 
-// ===== ADD ANIMATIONS CSS =====
-
-const uxStyles = document.createElement('style');
-uxStyles.textContent = `
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
+function previousSurveyStep(step) {
+    document.querySelectorAll('.survey-step').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
     
-    @keyframes slideInUp {
-        from {
-            transform: translate(-50%, 100%);
-        }
-        to {
-            transform: translate(-50%, 0);
-        }
-    }
-    
-    @keyframes celebrationPop {
-        0% {
-            transform: translate(-50%, -50%) scale(0);
-        }
-        50% {
-            transform: translate(-50%, -50%) scale(1.1);
-        }
-        100% {
-            transform: translate(-50%, -50%) scale(1);
-        }
-    }
-    
-    .spinner {
-        width: 50px;
-        height: 50px;
-        border: 4px solid var(--color-surface);
-        border-top-color: var(--color-primary);
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-        margin: 0 auto;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-`;
-document.head.appendChild(uxStyles);
+    document.getElementById(`step${step}`).classList.add('active');
+    document.getElementById(`dot${step}`).classList.add('active');
+}
 
-// ===== EXPORT FUNCTIONS =====
-
-window.showLoading = showLoading;
-window.hideLoading = hideLoading;
-window.confirmDialog = confirmDialog;
-window.showTooltip = showTooltip;
-window.validateEmail = validateEmail;
-window.showFieldError = showFieldError;
-window.showEmptyState = showEmptyState;
-window.celebrateSuccess = celebrateSuccess;
-window.showProgressBar = showProgressBar;
-window.hideProgressBar = hideProgressBar;
-window.showFirstTimeTip = showFirstTimeTip;
-
-// ===== APPLY UX IMPROVEMENTS ON LOAD =====
-
-document.addEventListener('DOMContentLoaded', function() {
+// Complete survey and generate personalized plan
+function completeSurvey() {
     const currentUser = getCurrentUser();
+    if (!currentUser) return;
     
-    // Show first-time tips
-    if (currentUser && currentUser.tier === 'FREE') {
-        setTimeout(() => {
-            showFirstTimeTip('upgrade', 'Upgrade to unlock personalized nutrition goals and meal planning! 🎯');
-        }, 3000);
+    // Collect all survey data
+    const profile = {
+        // Step 1
+        age: parseInt(document.getElementById('surveyAge').value),
+        gender: document.getElementById('surveyGender').value,
+        weight: parseFloat(document.getElementById('surveyWeight').value),
+        height: parseInt(document.getElementById('surveyHeight').value),
+        targetWeight: parseFloat(document.getElementById('surveyTargetWeight').value),
+        
+        // Step 2
+        goal: document.getElementById('surveyGoal').value,
+        fitnessLevel: document.getElementById('surveyFitnessLevel').value,
+        activityLevel: parseFloat(document.getElementById('surveyActivity').value),
+        workoutDays: parseInt(document.getElementById('surveyWorkoutDays').value),
+        
+        // Step 3
+        diet: document.getElementById('surveyDiet').value,
+        equipment: document.getElementById('surveyEquipment').value,
+        limitations: document.getElementById('surveyLimitations').value,
+        
+        // Meta
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    
+    // Validate
+    if (!profile.age || !profile.weight || !profile.height) {
+        alert('Please fill in all required fields');
+        return;
     }
     
-    // Add helpful placeholder animations
-    document.querySelectorAll('input').forEach(input => {
-        input.addEventListener('focus', function() {
-            this.style.transform = 'scale(1.02)';
-        });
+    // Save profile
+    const profileKey = `profile_${currentUser.email}`;
+    localStorage.setItem(profileKey, JSON.stringify(profile));
+    
+    // Sync to Firebase
+    if (isFirebaseReady() && currentUser.uid) {
+        firebase.database().ref('users/' + currentUser.uid + '/profile').set(profile);
+    }
+    
+    // Generate personalized nutrition goals
+    generatePersonalizedNutrition(profile);
+    
+    // Generate personalized workout plan (for ELITE tier)
+    if (currentUser.tier === 'ELITE') {
+        generatePersonalizedWorkout(profile);
+    }
+    
+    // Close survey
+    document.getElementById('personalizationModal').remove();
+    
+    // Show success message
+    showSuccessMessage('Your personalized plan is ready!');
+    
+    // Navigate to appropriate tab
+    if (currentUser.tier === 'ELITE') {
+        setTimeout(() => switchTab('workouts'), 500);
+    } else {
+        setTimeout(() => switchTab('goals'), 500);
+    }
+}
+
+// Generate personalized nutrition goals
+function generatePersonalizedNutrition(profile) {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    // Calculate BMR using Mifflin-St Jeor
+    const weightKg = profile.weight * 0.453592;
+    const heightCm = profile.height * 2.54;
+    
+    let bmr;
+    if (profile.gender === 'male') {
+        bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * profile.age) + 5;
+    } else {
+        bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * profile.age) - 161;
+    }
+    
+    // Calculate TDEE
+    const tdee = bmr * profile.activityLevel;
+    
+    // Adjust for goal
+    let calories;
+    if (profile.goal === 'lose_fat') {
+        calories = Math.round(tdee * 0.8); // 20% deficit
+    } else if (profile.goal === 'build_muscle') {
+        calories = Math.round(tdee * 1.1); // 10% surplus
+    } else if (profile.goal === 'get_toned') {
+        calories = Math.round(tdee * 0.95); // Small deficit
+    } else if (profile.goal === 'strength') {
+        calories = Math.round(tdee * 1.05); // Small surplus
+    } else {
+        calories = Math.round(tdee); // Maintenance
+    }
+    
+    // Calculate macros based on goal
+    let proteinGrams, carbGrams, fatGrams;
+    
+    if (profile.goal === 'lose_fat' || profile.goal === 'get_toned') {
+        proteinGrams = Math.round(profile.weight * 1.2); // High protein for cutting
+        fatGrams = Math.round(profile.weight * 0.35);
+        const remainingCals = calories - (proteinGrams * 4) - (fatGrams * 9);
+        carbGrams = Math.round(remainingCals / 4);
+    } else if (profile.goal === 'build_muscle' || profile.goal === 'strength') {
+        proteinGrams = Math.round(profile.weight * 1.0); // 1g per lb
+        fatGrams = Math.round(profile.weight * 0.4);
+        const remainingCals = calories - (proteinGrams * 4) - (fatGrams * 9);
+        carbGrams = Math.round(remainingCals / 4);
+    } else {
+        proteinGrams = Math.round(profile.weight * 0.8);
+        fatGrams = Math.round(profile.weight * 0.35);
+        const remainingCals = calories - (proteinGrams * 4) - (fatGrams * 9);
+        carbGrams = Math.round(remainingCals / 4);
+    }
+    
+    // Adjust for diet type
+    if (profile.diet === 'keto') {
+        carbGrams = Math.round(calories * 0.05 / 4); // 5% carbs
+        fatGrams = Math.round((calories - (proteinGrams * 4) - (carbGrams * 4)) / 9);
+    }
+    
+    // Save goals
+    const goals = {
+        calories: calories,
+        protein: proteinGrams,
+        carbs: carbGrams,
+        sugar: 50, // Standard recommendation
+        generatedFrom: 'personalization',
+        updatedAt: new Date().toISOString()
+    };
+    
+    const goalsKey = `goals_${currentUser.email}`;
+    localStorage.setItem(goalsKey, JSON.stringify(goals));
+    
+    // Sync to Firebase
+    if (isFirebaseReady() && currentUser.uid) {
+        firebase.database().ref('users/' + currentUser.uid + '/goals').set(goals);
+    }
+    
+    // Update UI
+    loadGoals();
+}
+
+// Generate personalized workout plan
+function generatePersonalizedWorkout(profile) {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    // Create workout plan based on profile
+    const workoutPlan = {
+        schedule: generateWorkoutSchedule(profile),
+        exercises: customizeExercises(profile),
+        generatedAt: new Date().toISOString()
+    };
+    
+    const planKey = `workout_plan_${currentUser.email}`;
+    localStorage.setItem(planKey, JSON.stringify(workoutPlan));
+    
+    // Sync to Firebase
+    if (isFirebaseReady() && currentUser.uid) {
+        firebase.database().ref('users/' + currentUser.uid + '/workoutPlan').set(workoutPlan);
+    }
+}
+
+// Generate workout schedule based on days available
+function generateWorkoutSchedule(profile) {
+    const schedules = {
+        3: { name: 'Push-Pull-Legs (3 day)', split: ['Push', 'Pull', 'Legs'] },
+        4: { name: 'Upper-Lower (4 day)', split: ['Upper Push', 'Lower', 'Upper Pull', 'Lower'] },
+        5: { name: 'PPL + Upper-Lower', split: ['Push', 'Pull', 'Legs', 'Upper', 'Lower'] },
+        6: { name: 'PPL x2', split: ['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs'] }
+    };
+    
+    return schedules[profile.workoutDays] || schedules[6];
+}
+
+// Customize exercises based on equipment and limitations
+function customizeExercises(profile) {
+    // This would contain logic to swap exercises based on:
+    // - Equipment available
+    // - Injuries/limitations
+    // - Fitness level
+    // Returns modified exercise list
+    
+    return {
+        equipment: profile.equipment,
+        modifications: profile.limitations,
+        level: profile.fitnessLevel
+    };
+}
+
+// Get user profile
+function getUserProfile() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return null;
+    
+    const profileKey = `profile_${currentUser.email}`;
+    return JSON.parse(localStorage.getItem(profileKey) || 'null');
+}
+
+// Display profile in UI
+function displayProfile() {
+    const profile = getUserProfile();
+    if (!profile) return;
+    
+    // Show nutrition profile banner
+    const nutritionBanner = document.getElementById('nutritionProfileBanner');
+    if (nutritionBanner) {
+        nutritionBanner.style.display = 'flex';
+        document.getElementById('profileAge').textContent = profile.age;
+        document.getElementById('profileWeight').textContent = profile.weight + ' lbs';
         
-        input.addEventListener('blur', function() {
-            this.style.transform = 'scale(1)';
-        });
+        // Format goal name
+        const goalNames = {
+            'lose_fat': 'Fat Loss',
+            'build_muscle': 'Build Muscle',
+            'get_toned': 'Get Toned',
+            'maintain': 'Maintain',
+            'strength': 'Strength',
+            'endurance': 'Endurance'
+        };
+        document.getElementById('profileGoal').textContent = goalNames[profile.goal] || profile.goal;
+    }
+    
+    // Show workout profile banner
+    const workoutBanner = document.getElementById('workoutProfileBanner');
+    if (workoutBanner) {
+        workoutBanner.style.display = 'flex';
+        
+        const levelNames = {
+            'beginner': 'Beginner',
+            'intermediate': 'Intermediate',
+            'advanced': 'Advanced'
+        };
+        document.getElementById('profileFitnessLevel').textContent = levelNames[profile.fitnessLevel] || profile.fitnessLevel;
+        document.getElementById('profileWorkoutDays').textContent = profile.workoutDays + ' days';
+        
+        const equipmentNames = {
+            'full_gym': 'Full Gym',
+            'basic': 'Basic',
+            'minimal': 'Minimal',
+            'home': 'Home Gym'
+        };
+        document.getElementById('profileEquipment').textContent = equipmentNames[profile.equipment] || profile.equipment;
+    }
+    
+    // Add personalized badges
+    const nutritionBadge = document.getElementById('personalizedBadgeNutrition');
+    const workoutBadge = document.getElementById('personalizedBadgeWorkout');
+    
+    if (nutritionBadge) {
+        nutritionBadge.innerHTML = '<span class="personalized-badge">Personalized</span>';
+    }
+    if (workoutBadge) {
+        workoutBadge.innerHTML = '<span class="personalized-badge">Personalized</span>';
+    }
+}
+
+// Edit profile (opens survey again with current values)
+function editProfile() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    showPersonalizationSurvey(currentUser.tier);
+}
+
+// Check if user needs to complete profile
+function checkProfileCompletion() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    // Only check for paid tiers
+    if (currentUser.tier === 'FREE') return;
+    
+    const profile = getUserProfile();
+    
+    // If no profile exists and user has been a member for >1 minute, show survey
+    if (!profile) {
+        const userKey = `user_${currentUser.email}_created`;
+        const created = localStorage.getItem(userKey);
+        
+        if (!created) {
+            localStorage.setItem(userKey, new Date().toISOString());
+        } else {
+            const createdDate = new Date(created);
+            const now = new Date();
+            const minutesSinceCreation = (now - createdDate) / 1000 / 60;
+            
+            // If user has been around for 1+ minutes without completing profile, prompt them
+            if (minutesSinceCreation > 1) {
+                setTimeout(() => {
+                    if (confirm('Complete your profile to get personalized nutrition and workout plans!\n\nWould you like to do this now?')) {
+                        showPersonalizationSurvey(currentUser.tier);
+                    }
+                }, 2000);
+            }
+        }
+    }
+}
+
+// Initialize profile display on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        displayProfile();
+        checkProfileCompletion();
     });
-});
+} else {
+    displayProfile();
+    checkProfileCompletion();
+}
+
+// Export functions
+window.showPersonalizationSurvey = showPersonalizationSurvey;
+window.nextSurveyStep = nextSurveyStep;
+window.previousSurveyStep = previousSurveyStep;
+window.completeSurvey = completeSurvey;
+window.getUserProfile = getUserProfile;
+window.displayProfile = displayProfile;
+window.editProfile = editProfile;
