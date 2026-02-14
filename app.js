@@ -27,14 +27,14 @@ function switchTab(tabName) {
     });
     
     // Show selected tab
-    const targetTab = document.getElementById(tabName + 'Tab');
+    const targetTab = document.getElementById(tabName);
     if (!targetTab) {
-        console.error('❌ Tab not found:', tabName + 'Tab');
+        console.error('❌ Tab not found:', tabName);
         return;
     }
     
     targetTab.classList.add('active');
-    console.log('✅ Tab content shown:', tabName + 'Tab');
+    console.log('✅ Tab content shown:', tabName);
     
     // Activate the button
     const buttonMap = {
