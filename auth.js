@@ -129,7 +129,7 @@ function showApp(userData) {
             
             // Update UI after tier is loaded
             updateTierDisplay();
-            updateFeatureAccess();
+            initializeTabSystem();
             
             // Load initial content
             loadNutritionData();
@@ -143,14 +143,14 @@ function showApp(userData) {
             console.error('Error loading tier from Firebase:', error);
             // Still show app with current tier
             updateTierDisplay();
-            updateFeatureAccess();
+            initializeTabSystem();
             loadNutritionData();
             loadGoals();
         });
     } else {
         // No Firebase, use local storage tier
         updateTierDisplay();
-        updateFeatureAccess();
+        initializeTabSystem();
         loadNutritionData();
         loadGoals();
         
@@ -527,7 +527,7 @@ function updateUserTier(newTier) {
     }
     
     updateTierDisplay();
-    updateFeatureAccess();
+    initializeTabSystem();
 }
 
 // Update tier display in header
@@ -554,137 +554,163 @@ function updateTierDisplay() {
 }
 
 // Update feature access based on user tier
-function updateFeatureAccess() {
+// ====================================================================
+// BULLETPROOF TAB SYSTEM - COMPLETE REWRITE
+// ====================================================================
+
+// Global tab system state
+window.tabSystem = {
+    initialized: false,
+    currentTier: 'FREE'
+};
+
+// Initialize tab system - call this after page loads and after login
+function initializeTabSystem() {
+    console.log('🔧 INITIALIZING TAB SYSTEM...');
+    
     const currentUser = getCurrentUser();
     if (!currentUser) {
-        console.warn('⚠️ No current user for feature access');
+        console.error('❌ No user - cannot initialize tabs');
         return;
     }
     
-    console.log('🔐 Updating feature access for tier:', currentUser.tier);
+    const tier = currentUser.tier || 'FREE';
+    window.tabSystem.currentTier = tier;
     
-    const tier = currentUser.tier;
+    console.log('👤 User tier:', tier);
     
-    // Get tab elements
-    const goalsTab = document.getElementById('goalsTab');
-    const workoutsTab = document.getElementById('workoutsTab');
+    // Get all required elements
+    const goalsBtn = document.getElementById('goalsTab');
+    const workoutsBtn = document.getElementById('workoutsTab');
     const goalsLock = document.getElementById('goalsLock');
     const workoutsLock = document.getElementById('workoutsLock');
     
-    if (!goalsTab || !workoutsTab) {
-        console.error('❌ CRITICAL: Tab elements not found!');
-        console.log('goalsTab:', goalsTab);
-        console.log('workoutsTab:', workoutsTab);
+    if (!goalsBtn || !workoutsBtn) {
+        console.error('❌ CRITICAL: Tab buttons not found!');
+        console.log('goalsBtn:', goalsBtn);
+        console.log('workoutsBtn:', workoutsBtn);
         return;
     }
     
-    console.log('✅ Tab elements found');
+    console.log('✅ Tab buttons found');
     
-    // Remove any existing click handlers by cloning and replacing
-    const goalsTabNew = goalsTab.cloneNode(true);
-    const workoutsTabNew = workoutsTab.cloneNode(true);
-    goalsTab.parentNode.replaceChild(goalsTabNew, goalsTab);
-    workoutsTab.parentNode.replaceChild(workoutsTabNew, workoutsTab);
+    // Remove ALL existing event listeners by cloning
+    const newGoalsBtn = goalsBtn.cloneNode(true);
+    const newWorkoutsBtn = workoutsBtn.cloneNode(true);
     
-    // Re-get the lock icons after cloning
+    goalsBtn.parentNode.replaceChild(newGoalsBtn, goalsBtn);
+    workoutsBtn.parentNode.replaceChild(newWorkoutsBtn, workoutsBtn);
+    
+    console.log('✅ Cloned buttons - old handlers removed');
+    
+    // Get fresh references to lock icons after cloning
     const newGoalsLock = document.getElementById('goalsLock');
     const newWorkoutsLock = document.getElementById('workoutsLock');
     
-    // FREE tier: Lock both goals and workouts
+    // ====== GOALS TAB SETUP ======
     if (tier === 'FREE') {
-        console.log('🔒 FREE tier - locking goals and workouts');
-        
-        // Goals tab - locked
-        goalsTabNew.style.opacity = '0.5';
-        goalsTabNew.style.cursor = 'not-allowed';
-        goalsTabNew.style.pointerEvents = 'auto';
+        // Lock goals for FREE tier
+        console.log('🔒 Locking GOALS for FREE tier');
+        newGoalsBtn.style.opacity = '0.5';
+        newGoalsBtn.style.cursor = 'not-allowed';
         if (newGoalsLock) newGoalsLock.style.display = 'inline';
         
-        // Workouts tab - locked
-        workoutsTabNew.style.opacity = '0.5';
-        workoutsTabNew.style.cursor = 'not-allowed';
-        workoutsTabNew.style.pointerEvents = 'auto';
-        if (newWorkoutsLock) newWorkoutsLock.style.display = 'inline';
-        
-        // Add click handlers
-        goalsTabNew.addEventListener('click', function(e) {
+        newGoalsBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            alert('⭐ Upgrade to PRO to unlock Nutrition Goals!\n\n✓ Personalized macro calculations\n✓ Smart meal suggestions\n✓ Progress tracking\n\nOnly $5 one-time!');
+            console.log('🔒 Goals clicked but locked (FREE tier)');
+            alert('🌟 Upgrade to PRO ($5) to unlock Nutrition Goals!\n\n✓ Personalized macros\n✓ Meal suggestions\n✓ Progress tracking');
             switchTab('pricing');
         });
+    } else {
+        // Unlock goals for PRO, STANDARD, ELITE
+        console.log('✅ Unlocking GOALS for', tier, 'tier');
+        newGoalsBtn.style.opacity = '1';
+        newGoalsBtn.style.cursor = 'pointer';
+        if (newGoalsLock) newGoalsLock.style.display = 'none';
         
-        workoutsTabNew.addEventListener('click', function(e) {
+        newGoalsBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            alert('🏆 Upgrade to ELITE to unlock Workout Plans!\n\n✓ Complete training programs\n✓ Exercise library\n✓ PR tracking\n✓ Rest timer\n\nOnly $20 one-time!');
-            switchTab('pricing');
+            console.log('✅ Goals clicked - switching tab');
+            switchTab('goals');
         });
     }
     
-    // PRO tier: Unlock goals, lock workouts
-    else if (tier === 'PRO' || tier === 'STANDARD') {
-        console.log('🔓 PRO/STANDARD tier - unlocking goals');
-        
-        // Goals tab - unlocked
-        goalsTabNew.style.opacity = '1';
-        goalsTabNew.style.cursor = 'pointer';
-        goalsTabNew.style.pointerEvents = 'auto';
-        if (newGoalsLock) newGoalsLock.style.display = 'none';
-        
-        goalsTabNew.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('🎯 Goals tab clicked - switching to goals');
-            switchTab('goals');
-        });
-        
-        // Workouts tab - locked
-        workoutsTabNew.style.opacity = '0.5';
-        workoutsTabNew.style.cursor = 'not-allowed';
-        workoutsTabNew.style.pointerEvents = 'auto';
-        if (newWorkoutsLock) newWorkoutsLock.style.display = 'inline';
-        
-        workoutsTabNew.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            alert('🏆 Upgrade to ELITE to unlock Workout Plans!\n\nOnly $15 more to upgrade from PRO!');
-            switchTab('pricing');
-        });
-    }
-    
-    // ELITE tier: Unlock everything
-    else if (tier === 'ELITE') {
-        console.log('🔓 ELITE tier - unlocking all features');
-        
-        // Goals tab - unlocked
-        goalsTabNew.style.opacity = '1';
-        goalsTabNew.style.cursor = 'pointer';
-        goalsTabNew.style.pointerEvents = 'auto';
-        if (newGoalsLock) newGoalsLock.style.display = 'none';
-        
-        goalsTabNew.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('🎯 Goals tab clicked - switching to goals');
-            switchTab('goals');
-        });
-        
-        // Workouts tab - unlocked
-        workoutsTabNew.style.opacity = '1';
-        workoutsTabNew.style.cursor = 'pointer';
-        workoutsTabNew.style.pointerEvents = 'auto';
+    // ====== WORKOUTS TAB SETUP ======
+    if (tier === 'ELITE') {
+        // Unlock workouts for ELITE only
+        console.log('✅ Unlocking WORKOUTS for ELITE tier');
+        newWorkoutsBtn.style.opacity = '1';
+        newWorkoutsBtn.style.cursor = 'pointer';
         if (newWorkoutsLock) newWorkoutsLock.style.display = 'none';
         
-        workoutsTabNew.addEventListener('click', function(e) {
+        newWorkoutsBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            console.log('💪 Workouts tab clicked - switching to workouts');
+            e.stopPropagation();
+            console.log('✅ Workouts clicked - switching tab');
             switchTab('workouts');
+        });
+    } else {
+        // Lock workouts for FREE, PRO, STANDARD
+        console.log('🔒 Locking WORKOUTS for', tier, 'tier');
+        newWorkoutsBtn.style.opacity = '0.5';
+        newWorkoutsBtn.style.cursor = 'not-allowed';
+        if (newWorkoutsLock) newWorkoutsLock.style.display = 'inline';
+        
+        newWorkoutsBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔒 Workouts clicked but locked');
+            alert('🏆 Upgrade to ELITE ($20) to unlock Workout Plans!\n\n✓ Complete programs\n✓ Exercise library\n✓ PR tracking');
+            switchTab('pricing');
         });
     }
     
-    console.log('✅ Feature access updated - handlers attached');
+    window.tabSystem.initialized = true;
+    console.log('✅ TAB SYSTEM INITIALIZED SUCCESSFULLY');
 }
 
-// Quick upgrade function for testing (can be called from console)
+// Force unlock all tabs (for testing)
+function forceUnlockAllTabs() {
+    console.log('🔓 FORCE UNLOCKING ALL TABS...');
+    
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+        alert('Please log in first');
+        return;
+    }
+    
+    // Upgrade to ELITE
+    currentUser.tier = 'ELITE';
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    
+    // Update Firebase if available
+    if (typeof isFirebaseReady === 'function' && isFirebaseReady() && currentUser.uid) {
+        firebase.database().ref('users/' + currentUser.uid).update({ tier: 'ELITE' });
+    }
+    
+    // Update tier display
+    const tierElement = document.getElementById('userTier');
+    if (tierElement) {
+        tierElement.textContent = 'ELITE';
+        tierElement.style.background = 'linear-gradient(135deg, #ff3366, #ff0055)';
+    }
+    
+    // Reinitialize tab system
+    initializeTabSystem();
+    
+    alert('✅ Upgraded to ELITE!\n\nAll tabs unlocked!\n\n✓ Goals tab works\n✓ Workouts tab works');
+    
+    return 'SUCCESS: All tabs unlocked!';
+}
+
+// Expose globally
+window.initializeTabSystem = initializeTabSystem;
+window.forceUnlockAllTabs = forceUnlockAllTabs;
+
+console.log('✅ Tab system loaded');
+
 function upgradeToElite() {
     const currentUser = getCurrentUser();
     if (!currentUser) {
@@ -700,7 +726,7 @@ function upgradeToElite() {
     }
     
     updateTierDisplay();
-    updateFeatureAccess();
+    initializeTabSystem();
     
     alert('🎉 Upgraded to ELITE!\n\nAll features unlocked!\n\nYou can now access Nutrition Goals and Workout Plans.');
     
