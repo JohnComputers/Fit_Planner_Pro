@@ -38,6 +38,20 @@ function loadUserFromFirebase(firebaseUser) {
     
     const userRef = firebase.database().ref('users/' + firebaseUser.uid);
     
+    // CRITICAL: Check localStorage FIRST to see if we have a recent tier upgrade
+    const localUser = localStorage.getItem('currentUser');
+    let localTier = 'FREE';
+    
+    if (localUser) {
+        try {
+            const parsed = JSON.parse(localUser);
+            localTier = parsed.tier || 'FREE';
+            console.log('💾 localStorage tier:', localTier);
+        } catch (e) {
+            console.error('Error parsing localStorage:', e);
+        }
+    }
+    
     userRef.once('value').then((snapshot) => {
         const userData = snapshot.val();
         
@@ -62,13 +76,31 @@ function loadUserFromFirebase(firebaseUser) {
         
         if (userData) {
             // User data exists in database
-            let tier = userData.tier || 'FREE';
+            let firebaseTier = userData.tier || 'FREE';
+            let paidTier = userData.paidTier || null;
             
-            // Apply pending unlock if exists
-            if (unlockTier) {
-                console.log('💰 Applying paid tier:', unlockTier);
-                tier = unlockTier;
-                // Update Firebase immediately
+            console.log('🔥 Firebase tier:', firebaseTier);
+            console.log('💰 Paid tier:', paidTier || 'None');
+            
+            // Tier priority system (NEVER downgrade):
+            // 1. Pending unlock (from payment URL)
+            // 2. Paid tier in Firebase (what they paid for)
+            // 3. localStorage tier (what they currently have)
+            // 4. Firebase tier (what's in database)
+            // ALWAYS use the HIGHEST tier
+            
+            const tierRank = { 'FREE': 0, 'PRO': 1, 'STANDARD': 2, 'ELITE': 3 };
+            
+            let finalTier = firebaseTier;
+            let tierSource = 'firebase';
+            
+            // Check pending unlock
+            if (unlockTier && tierRank[unlockTier] > tierRank[finalTier]) {
+                finalTier = unlockTier;
+                tierSource = 'pending_unlock';
+                console.log('📦 Using pending unlock tier:', unlockTier);
+                
+                // Update Firebase with pending unlock
                 userRef.update({ 
                     tier: unlockTier,
                     paidTier: unlockTier,
@@ -77,26 +109,56 @@ function loadUserFromFirebase(firebaseUser) {
                 });
             }
             
+            // Check paid tier (what they actually paid for)
+            if (paidTier && tierRank[paidTier] > tierRank[finalTier]) {
+                finalTier = paidTier;
+                tierSource = 'paid_tier';
+                console.log('💰 Using paid tier from Firebase:', paidTier);
+                
+                // If paid tier exists but tier is lower, fix it
+                if (firebaseTier !== paidTier) {
+                    console.log('⚠️ Fixing tier mismatch - updating to paid tier');
+                    userRef.update({ 
+                        tier: paidTier,
+                        updatedAt: new Date().toISOString()
+                    });
+                }
+            }
+            
+            // Check localStorage (recent upgrade might not be in Firebase yet)
+            if (tierRank[localTier] > tierRank[finalTier]) {
+                finalTier = localTier;
+                tierSource = 'localStorage';
+                console.log('💾 Using localStorage tier (recent upgrade):', localTier);
+                
+                // Update Firebase to match
+                userRef.update({ 
+                    tier: localTier,
+                    updatedAt: new Date().toISOString()
+                });
+            }
+            
             // Auto-upgrade admin email to ELITE
-            if (firebaseUser.email === 'random111199@gmail.com' && tier !== 'ELITE') {
-                tier = 'ELITE';
+            if (firebaseUser.email === 'random111199@gmail.com' && finalTier !== 'ELITE') {
+                finalTier = 'ELITE';
+                tierSource = 'admin';
                 userRef.update({ tier: 'ELITE' });
             }
             
+            console.log('✅ Final tier:', finalTier, '(from ' + tierSource + ')');
+            
             const currentUser = {
                 email: firebaseUser.email,
-                tier: tier,
+                tier: finalTier,
                 isGuest: false,
                 uid: firebaseUser.uid
             };
-            
-            console.log('✅ User loaded with tier:', tier);
             
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
             showApp(currentUser);
         } else {
             // First time login, create user profile
-            let tier = unlockTier || 'FREE'; // Use paid tier if available
+            let tier = unlockTier || localTier; // Use paid tier or localStorage tier
             
             // Auto-upgrade admin email to ELITE
             if (firebaseUser.email === 'random111199@gmail.com') {
@@ -114,6 +176,11 @@ function loadUserFromFirebase(firebaseUser) {
                 newUserData.paidTier = unlockTier;
                 newUserData.paymentDate = new Date().toISOString();
                 console.log('💰 New user with paid tier:', unlockTier);
+            } else if (tier !== 'FREE') {
+                // If we have a non-FREE tier from localStorage, save it as paid
+                newUserData.paidTier = tier;
+                newUserData.paymentDate = new Date().toISOString();
+                console.log('💰 New user with tier from localStorage:', tier);
             }
             
             userRef.set(newUserData).then(() => {
@@ -133,15 +200,19 @@ function loadUserFromFirebase(firebaseUser) {
     }).catch((error) => {
         console.error('Error loading user data:', error);
         
-        // Check for pending unlock even if Firebase fails
-        const pendingUnlock = localStorage.getItem('pendingUnlock');
-        let tier = 'FREE';
+        // On error, use the HIGHEST tier we can find
+        let tier = localTier; // Start with localStorage
         
+        // Check for pending unlock
+        const pendingUnlock = localStorage.getItem('pendingUnlock');
         if (pendingUnlock) {
             try {
                 const unlock = JSON.parse(pendingUnlock);
                 if (Date.now() - unlock.timestamp < 5 * 60 * 1000) {
-                    tier = unlock.tier;
+                    const tierRank = { 'FREE': 0, 'PRO': 1, 'STANDARD': 2, 'ELITE': 3 };
+                    if (tierRank[unlock.tier] > tierRank[tier]) {
+                        tier = unlock.tier;
+                    }
                 }
                 localStorage.removeItem('pendingUnlock');
             } catch (e) {
@@ -149,9 +220,12 @@ function loadUserFromFirebase(firebaseUser) {
             }
         }
         
+        // Admin override
         if (firebaseUser.email === 'random111199@gmail.com') {
             tier = 'ELITE';
         }
+        
+        console.log('⚠️ Using fallback tier:', tier);
         
         showApp({
             email: firebaseUser.email,
