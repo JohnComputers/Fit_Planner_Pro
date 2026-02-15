@@ -98,6 +98,16 @@ function switchTab(tabName) {
         if (typeof loadWorkoutWeek === 'function') {
             loadWorkoutWeek();
         }
+        
+        // Load PRs
+        if (typeof loadPRs === 'function') {
+            loadPRs();
+        }
+        
+        // Load body measurements
+        if (typeof loadMeasurements === 'function') {
+            loadMeasurements();
+        }
     }
     
     console.log('✅ switchTab complete');
@@ -1112,42 +1122,124 @@ function openPRModal(exercise) {
     savePR(exercise, parseInt(weight), parseInt(reps));
 }
 
-function savePR(exercise, weight, reps) {
+async function savePR(exercise, weight, reps) {
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('🏋️ SAVING PR');
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('Exercise:', exercise);
+    console.log('Weight:', weight, 'lbs');
+    console.log('Reps:', reps);
+    
     const currentUser = getCurrentUser();
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.error('❌ No user logged in');
+        alert('Please log in to track PRs');
+        return;
+    }
+    
+    console.log('✅ User:', currentUser.email);
     
     const prKey = `prs_${currentUser.email}`;
     const prs = JSON.parse(localStorage.getItem(prKey) || '{}');
     
     if (!prs[exercise]) {
         prs[exercise] = [];
+        console.log('📝 Created new PR array for:', exercise);
     }
     
-    prs[exercise].push({
+    const oneRM = Math.round(weight * (1 + reps / 30)); // Epley formula
+    const newPR = {
         weight: weight,
         reps: reps,
         date: new Date().toISOString(),
-        oneRM: Math.round(weight * (1 + reps / 30)) // Epley formula
-    });
+        oneRM: oneRM
+    };
     
-    localStorage.setItem(prKey, JSON.stringify(prs));
+    prs[exercise].push(newPR);
+    console.log('✅ PR added:', newPR);
+    console.log('   Estimated 1RM:', oneRM, 'lbs');
+    
+    // Save to localStorage
+    try {
+        localStorage.setItem(prKey, JSON.stringify(prs));
+        console.log('✅ Saved to localStorage');
+    } catch (error) {
+        console.error('❌ localStorage save failed:', error);
+        alert('Error: Could not save PR. Please check your browser settings.');
+        return;
+    }
     
     // Sync to Firebase
     if (isFirebaseReady() && currentUser.uid) {
-        firebase.database().ref('users/' + currentUser.uid + '/prs').set(prs);
+        try {
+            console.log('🔥 Saving to Firebase...');
+            console.log('   Path: users/' + currentUser.uid + '/prs');
+            
+            await firebase.database().ref('users/' + currentUser.uid + '/prs').set(prs);
+            console.log('✅ Saved to Firebase successfully');
+            
+            // Verify
+            console.log('🔍 Verifying Firebase save...');
+            const snapshot = await firebase.database().ref('users/' + currentUser.uid + '/prs').once('value');
+            const saved = snapshot.val();
+            
+            if (saved && saved[exercise] && saved[exercise].length === prs[exercise].length) {
+                console.log('✅ Firebase save verified!');
+            } else {
+                console.error('⚠️ Firebase save verification failed');
+            }
+        } catch (error) {
+            console.error('❌ Firebase save failed:', error);
+        }
+    } else {
+        console.warn('⚠️ Firebase not ready - saved to localStorage only');
     }
     
     loadPRs();
-    showSuccessMessage(`New PR logged for ${exercise}!`);
+    showSuccessMessage(`✅ New PR logged for ${exercise}!`);
+    
+    console.log('✅ PR save complete');
+    console.log('═══════════════════════════════════════════════════════════════════');
 }
 
-function loadPRs() {
+async function loadPRs() {
+    console.log('📥 Loading PRs...');
+    
     const currentUser = getCurrentUser();
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.log('⚠️ No user for PR loading');
+        return;
+    }
     
     const prKey = `prs_${currentUser.email}`;
-    const prs = JSON.parse(localStorage.getItem(prKey) || '{}');
+    let prs = {};
     
+    // Try to load from Firebase first
+    if (isFirebaseReady() && currentUser.uid) {
+        try {
+            console.log('🔥 Loading PRs from Firebase...');
+            const snapshot = await firebase.database().ref('users/' + currentUser.uid + '/prs').once('value');
+            const firebasePRs = snapshot.val();
+            
+            if (firebasePRs) {
+                console.log('✅ PRs loaded from Firebase');
+                prs = firebasePRs;
+                // Cache to localStorage
+                localStorage.setItem(prKey, JSON.stringify(prs));
+            } else {
+                console.log('⚠️ No PRs in Firebase, checking localStorage');
+                prs = JSON.parse(localStorage.getItem(prKey) || '{}');
+            }
+        } catch (error) {
+            console.error('❌ Error loading PRs from Firebase:', error);
+            prs = JSON.parse(localStorage.getItem(prKey) || '{}');
+        }
+    } else {
+        console.log('💾 Loading PRs from localStorage');
+        prs = JSON.parse(localStorage.getItem(prKey) || '{}');
+    }
+    
+    // Update UI
     ['bench', 'squat', 'deadlift', 'ohp'].forEach(exercise => {
         const exercisePRs = prs[exercise] || [];
         if (exercisePRs.length > 0) {
@@ -1155,19 +1247,36 @@ function loadPRs() {
             const best1RM = sorted[0];
             const best5RM = sorted.find(pr => pr.reps >= 5);
             
-            document.getElementById(`${exercise}-1rm`).textContent = `${best1RM.weight} lbs`;
-            if (best5RM) {
-                document.getElementById(`${exercise}-5rm`).textContent = `${best5RM.weight} lbs`;
+            const elem1rm = document.getElementById(`${exercise}-1rm`);
+            const elem5rm = document.getElementById(`${exercise}-5rm`);
+            
+            if (elem1rm) {
+                elem1rm.textContent = `${best1RM.weight} lbs`;
+            }
+            if (elem5rm && best5RM) {
+                elem5rm.textContent = `${best5RM.weight} lbs`;
             }
         }
     });
+    
+    console.log('✅ PRs loaded');
 }
 
 // Body Measurements
 
-function saveMeasurements() {
+async function saveMeasurements() {
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('📏 SAVING BODY MEASUREMENTS');
+    console.log('═══════════════════════════════════════════════════════════════════');
+    
     const currentUser = getCurrentUser();
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.error('❌ No user logged in');
+        alert('Please log in to track measurements');
+        return;
+    }
+    
+    console.log('✅ User:', currentUser.email);
     
     const measurement = {
         date: new Date().toISOString(),
@@ -1179,20 +1288,59 @@ function saveMeasurements() {
         legs: parseFloat(document.getElementById('measureLegs').value) || null
     };
     
+    console.log('📊 Measurement data:', measurement);
+    
     if (!measurement.weight && !measurement.chest && !measurement.waist) {
-        alert('Please enter at least one measurement');
+        console.error('❌ Validation failed - no measurements entered');
+        alert('Please enter at least one measurement (Weight, Chest, or Waist)');
         return;
     }
+    
+    console.log('✅ Validation passed');
     
     const measureKey = `measurements_${currentUser.email}`;
     const measurements = JSON.parse(localStorage.getItem(measureKey) || '[]');
     
     measurements.push(measurement);
-    localStorage.setItem(measureKey, JSON.stringify(measurements));
+    console.log('✅ Measurement added to array (total:', measurements.length, ')');
+    
+    // Save to localStorage
+    try {
+        localStorage.setItem(measureKey, JSON.stringify(measurements));
+        console.log('✅ Saved to localStorage');
+    } catch (error) {
+        console.error('❌ localStorage save failed:', error);
+        alert('Error: Could not save measurements. Please check your browser settings.');
+        return;
+    }
     
     // Sync to Firebase
     if (isFirebaseReady() && currentUser.uid) {
-        firebase.database().ref('users/' + currentUser.uid + '/measurements').set(measurements);
+        try {
+            console.log('🔥 Saving to Firebase...');
+            console.log('   Path: users/' + currentUser.uid + '/measurements');
+            console.log('   Total measurements:', measurements.length);
+            
+            await firebase.database().ref('users/' + currentUser.uid + '/measurements').set(measurements);
+            console.log('✅ Saved to Firebase successfully');
+            
+            // Verify
+            console.log('🔍 Verifying Firebase save...');
+            const snapshot = await firebase.database().ref('users/' + currentUser.uid + '/measurements').once('value');
+            const saved = snapshot.val();
+            
+            if (saved && Array.isArray(saved) && saved.length === measurements.length) {
+                console.log('✅ Firebase save verified!');
+            } else {
+                console.error('⚠️ Firebase save verification failed');
+                console.error('   Expected length:', measurements.length);
+                console.error('   Got:', saved ? saved.length : 'null');
+            }
+        } catch (error) {
+            console.error('❌ Firebase save failed:', error);
+        }
+    } else {
+        console.warn('⚠️ Firebase not ready - saved to localStorage only');
     }
     
     // Clear inputs
@@ -1202,19 +1350,58 @@ function saveMeasurements() {
     document.getElementById('measureWaist').value = '';
     document.getElementById('measureArms').value = '';
     document.getElementById('measureLegs').value = '';
+    console.log('✅ Input fields cleared');
     
-    loadMeasurements();
-    showSuccessMessage('Measurements saved!');
+    await loadMeasurements();
+    showSuccessMessage('✅ Measurements saved!');
+    
+    console.log('✅ Measurement save complete');
+    console.log('═══════════════════════════════════════════════════════════════════');
 }
 
-function loadMeasurements() {
+async function loadMeasurements() {
+    console.log('📥 Loading body measurements...');
+    
     const currentUser = getCurrentUser();
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.log('⚠️ No user for measurement loading');
+        return;
+    }
     
     const measureKey = `measurements_${currentUser.email}`;
-    const measurements = JSON.parse(localStorage.getItem(measureKey) || '[]');
+    let measurements = [];
     
-    if (measurements.length === 0) return;
+    // Try to load from Firebase first
+    if (isFirebaseReady() && currentUser.uid) {
+        try {
+            console.log('🔥 Loading measurements from Firebase...');
+            const snapshot = await firebase.database().ref('users/' + currentUser.uid + '/measurements').once('value');
+            const firebaseMeasurements = snapshot.val();
+            
+            if (firebaseMeasurements && Array.isArray(firebaseMeasurements)) {
+                console.log('✅ Measurements loaded from Firebase:', firebaseMeasurements.length);
+                measurements = firebaseMeasurements;
+                // Cache to localStorage
+                localStorage.setItem(measureKey, JSON.stringify(measurements));
+            } else {
+                console.log('⚠️ No measurements in Firebase, checking localStorage');
+                measurements = JSON.parse(localStorage.getItem(measureKey) || '[]');
+            }
+        } catch (error) {
+            console.error('❌ Error loading measurements from Firebase:', error);
+            measurements = JSON.parse(localStorage.getItem(measureKey) || '[]');
+        }
+    } else {
+        console.log('💾 Loading measurements from localStorage');
+        measurements = JSON.parse(localStorage.getItem(measureKey) || '[]');
+    }
+    
+    if (measurements.length === 0) {
+        console.log('⚠️ No measurements to display');
+        return;
+    }
+    
+    console.log('📊 Total measurements:', measurements.length);
     
     const latest = measurements[measurements.length - 1];
     const previous = measurements.length > 1 ? measurements[measurements.length - 2] : null;
@@ -1228,7 +1415,10 @@ function loadMeasurements() {
         ${generateMeasurementStat('Legs', latest.legs, previous?.legs, '"')}
     `;
     
-    document.getElementById('measurementProgress').innerHTML = progressHTML;
+    const progressEl = document.getElementById('measurementProgress');
+    if (progressEl) {
+        progressEl.innerHTML = progressHTML;
+    }
     
     // History
     const historyHTML = measurements.slice(-5).reverse().map(m => {
@@ -1246,7 +1436,12 @@ function loadMeasurements() {
         `;
     }).join('');
     
-    document.getElementById('measurementHistory').innerHTML = historyHTML;
+    const historyEl = document.getElementById('measurementHistory');
+    if (historyEl) {
+        historyEl.innerHTML = historyHTML;
+    }
+    
+    console.log('✅ Measurements loaded and displayed');
 }
 
 function generateMeasurementStat(label, current, previous, unit) {
@@ -1713,3 +1908,7 @@ setInterval(updateTodayDate, 60000);
 window.toggleWorkoutDay = toggleWorkoutDay;
 window.loadWorkoutWeek = loadWorkoutWeek;
 window.updateWeekSummary = updateWeekSummary;
+window.savePR = savePR;
+window.loadPRs = loadPRs;
+window.saveMeasurements = saveMeasurements;
+window.loadMeasurements = loadMeasurements;
