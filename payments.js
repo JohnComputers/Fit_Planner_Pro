@@ -84,23 +84,51 @@ async function handleUnlock(tier) {
     console.log('🔄 APPLYING TIER UPDATE...');
     
     try {
-        // Wait for tier update to complete (including Firebase)
+        // Save to localStorage IMMEDIATELY (before Firebase)
+        currentUser.tier = tier;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        console.log('✅ Saved to localStorage');
+        
+        // Wait for Firebase update to complete
         await updateUserTier(tier, true);
         
         console.log('✅ TIER UPDATE COMPLETE');
         console.log('');
         
-        // Verify the update worked
+        // Double-check Firebase was updated
+        if (isFirebaseReady() && currentUser.uid) {
+            console.log('🔍 Verifying Firebase save...');
+            
+            const snapshot = await firebase.database().ref('users/' + currentUser.uid).once('value');
+            const fbData = snapshot.val();
+            
+            console.log('Firebase tier:', fbData?.tier);
+            console.log('Firebase paidTier:', fbData?.paidTier);
+            
+            if (fbData?.tier !== tier || fbData?.paidTier !== tier) {
+                console.error('⚠️ Firebase mismatch detected - fixing...');
+                
+                await firebase.database().ref('users/' + currentUser.uid).update({
+                    tier: tier,
+                    paidTier: tier,
+                    paymentDate: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+                
+                console.log('✅ Firebase fixed');
+            } else {
+                console.log('✅ Firebase verified correctly');
+            }
+        }
+        
+        // Verify localStorage one more time
         const verifyUser = getCurrentUser();
         console.log('🔍 VERIFICATION:');
         console.log('   Expected:', tier);
         console.log('   Actual:', verifyUser.tier);
         
-        if (verifyUser.tier === tier) {
-            console.log('✅ VERIFIED - Tier correctly applied');
-        } else {
+        if (verifyUser.tier !== tier) {
             console.error('❌ VERIFICATION FAILED!');
-            console.error('   Tier mismatch detected!');
             console.error('   Attempting recovery...');
             
             // Force update again
@@ -120,13 +148,17 @@ async function handleUnlock(tier) {
             initializeTabSystem();
             
             console.log('✅ Recovery complete');
+        } else {
+            console.log('✅ VERIFIED - Tier correctly applied');
         }
         
-        // Clear pending unlock since we processed it
+        // Clear pending unlock since we processed it successfully
         localStorage.removeItem('pendingUnlock');
         
         console.log('═══════════════════════════════════════');
         console.log('✅ PAYMENT UNLOCK SUCCESS');
+        console.log('   Tier:', tier);
+        console.log('   Package:', tierName);
         console.log('═══════════════════════════════════════');
         console.log('');
         
