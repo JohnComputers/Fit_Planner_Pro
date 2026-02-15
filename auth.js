@@ -170,24 +170,62 @@ function showAuthModal() {
 
 // Show the main app
 function showApp(userData) {
+    console.log('📱 showApp called with tier:', userData.tier);
+    
     document.getElementById('authModal').style.display = 'none';
     document.getElementById('appContainer').style.display = 'block';
     
     // Update user info in header
     document.getElementById('userEmail').textContent = userData.email || 'Guest User';
     
-    // CRITICAL FIX: Reload tier from Firebase on every page load
-    if (isFirebaseReady() && userData.uid) {
+    // Check if there's a pending unlock from payment
+    const pendingUnlock = localStorage.getItem('pendingUnlock');
+    let skipFirebaseReload = false;
+    
+    if (pendingUnlock) {
+        try {
+            const unlock = JSON.parse(pendingUnlock);
+            // If unlock is recent (within 30 seconds), don't reload from Firebase
+            if (Date.now() - unlock.timestamp < 30000) {
+                console.log('⚠️ Recent payment detected - skipping Firebase reload to preserve tier');
+                skipFirebaseReload = true;
+            }
+        } catch (e) {
+            console.error('Error checking pending unlock:', e);
+        }
+    }
+    
+    // Reload tier from Firebase ONLY if no recent payment
+    if (!skipFirebaseReload && isFirebaseReady() && userData.uid) {
+        console.log('🔄 Reloading tier from Firebase...');
         firebase.database().ref('users/' + userData.uid).once('value').then((snapshot) => {
             const dbUserData = snapshot.val();
             if (dbUserData && dbUserData.tier) {
-                // Update tier from database
-                userData.tier = dbUserData.tier;
-                localStorage.setItem('currentUser', JSON.stringify(userData));
-                console.log('✅ Tier loaded from Firebase:', dbUserData.tier);
+                // Only update if Firebase tier is different
+                if (dbUserData.tier !== userData.tier) {
+                    console.log('📊 Tier mismatch - Firebase:', dbUserData.tier, 'Current:', userData.tier);
+                    
+                    // If current tier is higher, keep it (payment might have just completed)
+                    const tierRank = { 'FREE': 0, 'PRO': 1, 'STANDARD': 2, 'ELITE': 3 };
+                    if (tierRank[userData.tier] > tierRank[dbUserData.tier]) {
+                        console.log('⚠️ Current tier is higher - keeping current tier');
+                        // Update Firebase with current tier
+                        firebase.database().ref('users/' + userData.uid).update({
+                            tier: userData.tier,
+                            updatedAt: new Date().toISOString()
+                        });
+                    } else {
+                        // Firebase tier is higher, use it
+                        console.log('✅ Using Firebase tier:', dbUserData.tier);
+                        userData.tier = dbUserData.tier;
+                        localStorage.setItem('currentUser', JSON.stringify(userData));
+                    }
+                } else {
+                    console.log('✅ Tier matches Firebase:', dbUserData.tier);
+                }
             }
             
-            // Update UI after tier is loaded
+            // Update UI after tier check
             updateTierDisplay();
             initializeTabSystem();
             
@@ -201,19 +239,23 @@ function showApp(userData) {
             }
         }).catch((error) => {
             console.error('Error loading tier from Firebase:', error);
-            // Still show app with current tier
+            // Continue with current tier
             updateTierDisplay();
             initializeTabSystem();
             loadNutritionData();
             loadGoals();
         });
     } else {
-        // No Firebase, use local storage tier
+        console.log('✅ Using current tier:', userData.tier);
+        // Update UI immediately
         updateTierDisplay();
         initializeTabSystem();
+        
+        // Load initial content
         loadNutritionData();
         loadGoals();
         
+        // Display profile if exists
         if (typeof displayProfile === 'function') {
             setTimeout(() => displayProfile(), 100);
         }
@@ -562,62 +604,90 @@ function getCurrentUser() {
 
 // Update user tier
 function updateUserTier(newTier, forceUpdate = false) {
-    console.log('🔧 updateUserTier called:', newTier, 'Force:', forceUpdate);
-    
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-        console.error('❌ No current user to update');
-        return;
-    }
-    
-    console.log('📊 Updating tier from', currentUser.tier, 'to', newTier);
-    
-    currentUser.tier = newTier;
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    console.log('✅ Tier saved to localStorage');
-    
-    // Update in Firebase if available
-    if (isFirebaseReady() && currentUser.uid) {
-        console.log('🔥 Updating Firebase for user:', currentUser.uid);
+    return new Promise((resolve, reject) => {
+        console.log('🔧 updateUserTier called:', newTier, 'Force:', forceUpdate);
         
-        const updateData = {
-            tier: newTier,
-            updatedAt: new Date().toISOString()
-        };
-        
-        // If this is a payment unlock, add payment flag
-        if (forceUpdate) {
-            updateData.paidTier = newTier;
-            updateData.paymentDate = new Date().toISOString();
+        const currentUser = getCurrentUser();
+        if (!currentUser) {
+            console.error('❌ No current user to update');
+            reject('No current user');
+            return;
         }
         
-        firebase.database().ref('users/' + currentUser.uid).update(updateData)
-            .then(() => {
-                console.log('✅ Firebase update successful');
-            })
-            .catch((error) => {
-                console.error('❌ Firebase update failed:', error);
-                // Tier is still in localStorage, so it won't be lost
-            });
-    } else {
-        console.warn('⚠️ Firebase not ready, tier saved to localStorage only');
-    }
-    
-    // Update in local users array if not guest (fallback)
-    if (!currentUser.isGuest && !isFirebaseReady()) {
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const userIndex = users.findIndex(u => u.email === currentUser.email);
-        if (userIndex !== -1) {
-            users[userIndex].tier = newTier;
-            localStorage.setItem('users', JSON.stringify(users));
-            console.log('✅ Tier saved to local users array');
+        console.log('📊 Updating tier from', currentUser.tier, 'to', newTier);
+        
+        currentUser.tier = newTier;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        console.log('✅ Tier saved to localStorage');
+        
+        // Update in Firebase if available
+        if (isFirebaseReady() && currentUser.uid) {
+            console.log('🔥 Updating Firebase for user:', currentUser.uid);
+            
+            const updateData = {
+                tier: newTier,
+                updatedAt: new Date().toISOString()
+            };
+            
+            // If this is a payment unlock, add payment flag
+            if (forceUpdate) {
+                updateData.paidTier = newTier;
+                updateData.paymentDate = new Date().toISOString();
+                console.log('💰 Adding payment metadata');
+            }
+            
+            firebase.database().ref('users/' + currentUser.uid).update(updateData)
+                .then(() => {
+                    console.log('✅ Firebase update successful');
+                    
+                    // Update in local users array if not guest (fallback)
+                    if (!currentUser.isGuest) {
+                        const users = JSON.parse(localStorage.getItem('users') || '[]');
+                        const userIndex = users.findIndex(u => u.email === currentUser.email);
+                        if (userIndex !== -1) {
+                            users[userIndex].tier = newTier;
+                            localStorage.setItem('users', JSON.stringify(users));
+                            console.log('✅ Tier saved to local users array');
+                        }
+                    }
+                    
+                    updateTierDisplay();
+                    initializeTabSystem();
+                    
+                    console.log('✅ updateUserTier complete');
+                    resolve(newTier);
+                })
+                .catch((error) => {
+                    console.error('❌ Firebase update failed:', error);
+                    
+                    // Still update UI even if Firebase fails
+                    updateTierDisplay();
+                    initializeTabSystem();
+                    
+                    // Resolve anyway since localStorage worked
+                    resolve(newTier);
+                });
+        } else {
+            console.warn('⚠️ Firebase not ready, tier saved to localStorage only');
+            
+            // Update in local users array if not guest (fallback)
+            if (!currentUser.isGuest) {
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const userIndex = users.findIndex(u => u.email === currentUser.email);
+                if (userIndex !== -1) {
+                    users[userIndex].tier = newTier;
+                    localStorage.setItem('users', JSON.stringify(users));
+                    console.log('✅ Tier saved to local users array');
+                }
+            }
+            
+            updateTierDisplay();
+            initializeTabSystem();
+            
+            console.log('✅ updateUserTier complete (localStorage only)');
+            resolve(newTier);
         }
-    }
-    
-    updateTierDisplay();
-    initializeTabSystem();
-    
-    console.log('✅ updateUserTier complete');
+    });
 }
 
 // Update tier display in header
