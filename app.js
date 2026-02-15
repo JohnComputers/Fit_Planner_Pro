@@ -87,8 +87,9 @@ function switchTab(tabName) {
             }
         }, 100);
     } else if (tabName === 'workouts') {
-        if (typeof loadWorkoutPlan === 'function') {
-            loadWorkoutPlan();
+        console.log('💪 Loading workout profile...');
+        if (typeof displayProfile === 'function') {
+            displayProfile();
         }
     }
     
