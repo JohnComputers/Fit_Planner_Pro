@@ -87,9 +87,16 @@ function switchTab(tabName) {
             }
         }, 100);
     } else if (tabName === 'workouts') {
-        console.log('💪 Loading workout profile...');
+        console.log('💪 Loading workout profile and training log...');
+        
+        // Load profile data
         if (typeof displayProfile === 'function') {
             displayProfile();
+        }
+        
+        // Load workout tracking data
+        if (typeof loadWorkoutWeek === 'function') {
+            loadWorkoutWeek();
         }
     }
     
@@ -1356,10 +1363,25 @@ function generateMealSuggestions() {
 
 // Workout Tracking Functions
 
-function toggleWorkoutDay(day) {
+async function toggleWorkoutDay(day) {
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('📅 TOGGLING WORKOUT DAY:', day);
+    console.log('═══════════════════════════════════════════════════════════════════');
+    
     const checkCircle = document.getElementById(`check-${day}`);
+    if (!checkCircle) {
+        console.error('❌ Checkbox element not found for day:', day);
+        return;
+    }
+    
     const currentUser = getCurrentUser();
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.error('❌ No user for workout toggle');
+        alert('Please log in to track workouts');
+        return;
+    }
+    
+    console.log('✅ User:', currentUser.email);
     
     // Get current week's workout data
     const workoutKey = `workouts_${currentUser.email}`;
@@ -1371,38 +1393,85 @@ function toggleWorkoutDay(day) {
     weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
     const weekId = weekStart.toISOString().split('T')[0];
     
+    console.log('📆 Week ID:', weekId);
+    
     if (!workouts[weekId]) {
         workouts[weekId] = {};
+        console.log('📝 Created new week entry');
     }
     
     // Toggle the day
-    workouts[weekId][day] = !workouts[weekId][day];
+    const newState = !workouts[weekId][day];
+    workouts[weekId][day] = newState;
     
-    // Save to storage
-    localStorage.setItem(workoutKey, JSON.stringify(workouts));
+    console.log('✅ Day toggled:', day, '→', newState);
+    
+    // Save to localStorage FIRST (instant)
+    try {
+        localStorage.setItem(workoutKey, JSON.stringify(workouts));
+        console.log('✅ Saved to localStorage');
+    } catch (error) {
+        console.error('❌ localStorage save failed:', error);
+        alert('Error: Could not save workout. Please check your browser settings.');
+        return;
+    }
     
     // Sync to Firebase if available
     if (isFirebaseReady() && currentUser.uid) {
-        firebase.database().ref('users/' + currentUser.uid + '/workouts/' + weekId).set(workouts[weekId]);
+        try {
+            console.log('🔥 Saving to Firebase...');
+            console.log('   Path: users/' + currentUser.uid + '/workouts/' + weekId);
+            console.log('   Data:', workouts[weekId]);
+            
+            await firebase.database().ref('users/' + currentUser.uid + '/workouts/' + weekId).set(workouts[weekId]);
+            console.log('✅ Saved to Firebase successfully');
+            
+            // Verify the save
+            console.log('🔍 Verifying Firebase save...');
+            const snapshot = await firebase.database().ref('users/' + currentUser.uid + '/workouts/' + weekId).once('value');
+            const saved = snapshot.val();
+            
+            if (saved && saved[day] === newState) {
+                console.log('✅ Firebase save verified!');
+            } else {
+                console.error('⚠️ Firebase save verification failed');
+                console.error('   Expected:', {[day]: newState});
+                console.error('   Got:', saved);
+            }
+        } catch (error) {
+            console.error('❌ Firebase save failed:', error);
+            // Don't alert - localStorage save succeeded
+        }
+    } else {
+        console.warn('⚠️ Firebase not ready or no UID - saved to localStorage only');
     }
     
     // Update UI
     if (workouts[weekId][day]) {
         checkCircle.classList.add('checked');
+        console.log('✅ UI updated: checked');
     } else {
         checkCircle.classList.remove('checked');
+        console.log('✅ UI updated: unchecked');
     }
     
     // Update summary
     updateWeekSummary();
+    
+    console.log('✅ Workout day toggle complete');
+    console.log('═══════════════════════════════════════════════════════════════════');
 }
 
-function loadWorkoutWeek() {
+async function loadWorkoutWeek() {
+    console.log('📅 Loading workout week...');
+    
     const currentUser = getCurrentUser();
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.log('⚠️ No user for workout loading');
+        return;
+    }
     
     const workoutKey = `workouts_${currentUser.email}`;
-    const workouts = JSON.parse(localStorage.getItem(workoutKey) || '{}');
     
     // Get current week
     const now = new Date();
@@ -1410,7 +1479,39 @@ function loadWorkoutWeek() {
     weekStart.setDate(now.getDate() - now.getDay());
     const weekId = weekStart.toISOString().split('T')[0];
     
+    console.log('📆 Current week ID:', weekId);
+    
+    let workouts = {};
+    
+    // Try to load from Firebase first
+    if (isFirebaseReady() && currentUser.uid) {
+        try {
+            console.log('🔥 Loading workouts from Firebase...');
+            const snapshot = await firebase.database().ref('users/' + currentUser.uid + '/workouts').once('value');
+            const firebaseWorkouts = snapshot.val();
+            
+            if (firebaseWorkouts) {
+                console.log('✅ Workouts loaded from Firebase:', Object.keys(firebaseWorkouts).length, 'weeks');
+                workouts = firebaseWorkouts;
+                // Cache to localStorage
+                localStorage.setItem(workoutKey, JSON.stringify(workouts));
+            } else {
+                console.log('⚠️ No workouts in Firebase, checking localStorage');
+                // Try localStorage
+                workouts = JSON.parse(localStorage.getItem(workoutKey) || '{}');
+            }
+        } catch (error) {
+            console.error('❌ Error loading workouts from Firebase:', error);
+            // Fallback to localStorage
+            workouts = JSON.parse(localStorage.getItem(workoutKey) || '{}');
+        }
+    } else {
+        console.log('💾 Loading workouts from localStorage');
+        workouts = JSON.parse(localStorage.getItem(workoutKey) || '{}');
+    }
+    
     const thisWeek = workouts[weekId] || {};
+    console.log('📊 This week\'s workouts:', thisWeek);
     
     // Update UI
     ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].forEach(day => {
@@ -1425,6 +1526,7 @@ function loadWorkoutWeek() {
     });
     
     updateWeekSummary();
+    console.log('✅ Workout week loaded');
 }
 
 function updateWeekSummary() {
@@ -1606,3 +1708,8 @@ if (document.readyState === 'loading') {
 
 // Update date every minute (in case app stays open overnight)
 setInterval(updateTodayDate, 60000);
+
+// Export functions to window for HTML onclick access
+window.toggleWorkoutDay = toggleWorkoutDay;
+window.loadWorkoutWeek = loadWorkoutWeek;
+window.updateWeekSummary = updateWeekSummary;
