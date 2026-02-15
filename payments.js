@@ -12,6 +12,16 @@ function checkUnlockParameter() {
     const unlockTier = urlParams.get('unlock');
     
     if (unlockTier) {
+        console.log('🎉 Payment detected! Tier:', unlockTier);
+        
+        // Save to localStorage IMMEDIATELY (before Firebase loads)
+        const pendingUnlock = {
+            tier: unlockTier.toUpperCase(),
+            timestamp: Date.now()
+        };
+        localStorage.setItem('pendingUnlock', JSON.stringify(pendingUnlock));
+        
+        // Handle unlock
         handleUnlock(unlockTier.toUpperCase());
         
         // Clean URL (remove parameter)
@@ -29,11 +39,18 @@ function handleUnlock(tier) {
         return;
     }
     
+    console.log('💰 Processing payment unlock for tier:', tier);
+    
     const currentUser = getCurrentUser();
     if (!currentUser) {
-        alert('Please create an account or login to unlock features.');
+        console.log('⚠️ No user logged in yet - tier will be applied after login');
+        // Tier is already saved in pendingUnlock, will be applied on login
+        alert('Please create an account or login to complete your purchase and unlock features.');
         return;
     }
+    
+    console.log('👤 Current user:', currentUser.email);
+    console.log('📊 Current tier:', currentUser.tier);
     
     // Map payment tiers to app tiers
     let appTier = tier;
@@ -45,8 +62,15 @@ function handleUnlock(tier) {
         appTier = 'ELITE'; // Premium Pack
     }
     
-    // Update user tier
-    updateUserTier(appTier);
+    console.log('🔄 Updating to tier:', appTier);
+    
+    // Update user tier with force flag
+    updateUserTier(appTier, true); // true = force update
+    
+    // Clear pending unlock since we processed it
+    localStorage.removeItem('pendingUnlock');
+    
+    console.log('✅ Tier update complete');
     
     // Show success message THEN trigger personalization survey
     showUnlockSuccess(appTier);
