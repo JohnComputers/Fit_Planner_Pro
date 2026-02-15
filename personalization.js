@@ -406,17 +406,74 @@ function getUserProfile() {
     return JSON.parse(localStorage.getItem(profileKey) || 'null');
 }
 
+// Load profile from Firebase
+async function loadProfileFromFirebase() {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.uid) {
+        console.log('⚠️ No user or UID for profile load');
+        return null;
+    }
+    
+    // Check if we already have it in localStorage
+    const profileKey = `profile_${currentUser.email}`;
+    const localProfile = localStorage.getItem(profileKey);
+    
+    if (localProfile && localProfile !== 'null') {
+        console.log('✅ Profile found in localStorage');
+        return JSON.parse(localProfile);
+    }
+    
+    // Load from Firebase
+    if (typeof isFirebaseReady === 'function' && isFirebaseReady()) {
+        try {
+            console.log('📥 Loading profile from Firebase...');
+            const snapshot = await firebase.database().ref('users/' + currentUser.uid + '/profile').once('value');
+            const profile = snapshot.val();
+            
+            if (profile) {
+                console.log('✅ Profile loaded from Firebase:', profile);
+                // Save to localStorage for faster access
+                localStorage.setItem(profileKey, JSON.stringify(profile));
+                return profile;
+            } else {
+                console.log('⚠️ No profile found in Firebase');
+                return null;
+            }
+        } catch (error) {
+            console.error('❌ Error loading profile from Firebase:', error);
+            return null;
+        }
+    } else {
+        console.log('⚠️ Firebase not ready');
+        return null;
+    }
+}
+
 // Display profile in UI
-function displayProfile() {
-    const profile = getUserProfile();
-    if (!profile) return;
+async function displayProfile() {
+    console.log('📊 Displaying profile...');
+    
+    // Try to load profile from Firebase first
+    const profile = await loadProfileFromFirebase();
+    
+    if (!profile) {
+        console.log('⚠️ No profile to display');
+        return;
+    }
+    
+    console.log('✅ Profile loaded, displaying in UI');
     
     // Show nutrition profile banner
     const nutritionBanner = document.getElementById('nutritionProfileBanner');
     if (nutritionBanner) {
         nutritionBanner.style.display = 'flex';
-        document.getElementById('profileAge').textContent = profile.age;
-        document.getElementById('profileWeight').textContent = profile.weight + ' lbs';
+        
+        if (document.getElementById('profileAge')) {
+            document.getElementById('profileAge').textContent = profile.age;
+        }
+        if (document.getElementById('profileWeight')) {
+            document.getElementById('profileWeight').textContent = profile.weight + ' lbs';
+        }
         
         // Format goal name
         const goalNames = {
@@ -427,7 +484,9 @@ function displayProfile() {
             'strength': 'Strength',
             'endurance': 'Endurance'
         };
-        document.getElementById('profileGoal').textContent = goalNames[profile.goal] || profile.goal;
+        if (document.getElementById('profileGoal')) {
+            document.getElementById('profileGoal').textContent = goalNames[profile.goal] || profile.goal;
+        }
     }
     
     // Show workout profile banner
@@ -440,16 +499,23 @@ function displayProfile() {
             'intermediate': 'Intermediate',
             'advanced': 'Advanced'
         };
-        document.getElementById('profileFitnessLevel').textContent = levelNames[profile.fitnessLevel] || profile.fitnessLevel;
-        document.getElementById('profileWorkoutDays').textContent = profile.workoutDays + ' days';
+        
+        if (document.getElementById('profileFitnessLevel')) {
+            document.getElementById('profileFitnessLevel').textContent = levelNames[profile.fitnessLevel] || profile.fitnessLevel;
+        }
+        if (document.getElementById('profileWorkoutDays')) {
+            document.getElementById('profileWorkoutDays').textContent = profile.workoutDays + ' days';
+        }
         
         const equipmentNames = {
             'full_gym': 'Full Gym',
-            'basic': 'Basic',
-            'minimal': 'Minimal',
+            'basic': 'Basic Equipment',
+            'minimal': 'Minimal Equipment',
             'home': 'Home Gym'
         };
-        document.getElementById('profileEquipment').textContent = equipmentNames[profile.equipment] || profile.equipment;
+        if (document.getElementById('profileEquipment')) {
+            document.getElementById('profileEquipment').textContent = equipmentNames[profile.equipment] || profile.equipment;
+        }
     }
     
     // Add personalized badges
@@ -462,6 +528,8 @@ function displayProfile() {
     if (workoutBadge) {
         workoutBadge.innerHTML = '<span class="personalized-badge">Personalized</span>';
     }
+    
+    console.log('✅ Profile displayed successfully');
 }
 
 // Edit profile (opens survey again with current values)
@@ -524,4 +592,5 @@ window.previousSurveyStep = previousSurveyStep;
 window.completeSurvey = completeSurvey;
 window.getUserProfile = getUserProfile;
 window.displayProfile = displayProfile;
+window.loadProfileFromFirebase = loadProfileFromFirebase;
 window.editProfile = editProfile;
