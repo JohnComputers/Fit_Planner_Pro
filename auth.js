@@ -307,9 +307,15 @@ function showApp(userData) {
             loadNutritionData();
             loadGoals();
             
+            // Load workout data if user has ELITE tier
+            if (userData.tier === 'ELITE' && typeof loadWorkoutWeek === 'function') {
+                console.log('💪 Loading workout data for ELITE user...');
+                loadWorkoutWeek();
+            }
+            
             // Display profile if exists
             if (typeof displayProfile === 'function') {
-                setTimeout(() => displayProfile(), 100);
+                displayProfile();
             }
         }).catch((error) => {
             console.error('Error loading tier from Firebase:', error);
@@ -318,6 +324,17 @@ function showApp(userData) {
             initializeTabSystem();
             loadNutritionData();
             loadGoals();
+            
+            // Load workout data if user has ELITE tier
+            if (userData.tier === 'ELITE' && typeof loadWorkoutWeek === 'function') {
+                console.log('💪 Loading workout data for ELITE user...');
+                loadWorkoutWeek();
+            }
+            
+            // Display profile if exists
+            if (typeof displayProfile === 'function') {
+                displayProfile();
+            }
         });
     } else {
         console.log('✅ Using current tier:', userData.tier);
@@ -329,9 +346,15 @@ function showApp(userData) {
         loadNutritionData();
         loadGoals();
         
+        // Load workout data if user has ELITE tier
+        if (userData.tier === 'ELITE' && typeof loadWorkoutWeek === 'function') {
+            console.log('💪 Loading workout data for ELITE user...');
+            loadWorkoutWeek();
+        }
+        
         // Display profile if exists
         if (typeof displayProfile === 'function') {
-            setTimeout(() => displayProfile(), 100);
+            displayProfile();
         }
     }
 }
