@@ -31,56 +31,124 @@ function checkUnlockParameter() {
 }
 
 // Handle tier unlock
-function handleUnlock(tier) {
+async function handleUnlock(tier) {
+    console.log('═══════════════════════════════════════');
+    console.log('💰 PAYMENT UNLOCK STARTED');
+    console.log('═══════════════════════════════════════');
+    console.log('Tier from URL:', tier);
+    
     const validTiers = ['PRO', 'STANDARD', 'ELITE'];
     
     if (!validTiers.includes(tier)) {
-        console.error('Invalid tier:', tier);
+        console.error('❌ INVALID TIER:', tier);
+        console.error('Valid tiers:', validTiers);
+        alert('❌ Error: Invalid tier code.\n\nTier: ' + tier + '\n\nPlease contact support immediately.');
         return;
     }
     
-    console.log('💰 Processing payment unlock for tier:', tier);
+    console.log('✅ Tier code is valid');
     
     const currentUser = getCurrentUser();
     if (!currentUser) {
-        console.log('⚠️ No user logged in yet - tier will be applied after login');
-        // Tier is already saved in pendingUnlock, will be applied on login
-        alert('Please create an account or login to complete your purchase and unlock features.');
+        console.warn('⚠️ NO USER LOGGED IN');
+        console.log('Tier will be applied after login');
+        
+        alert('🎉 Payment Successful!\n\n' + 
+              'Please create an account or login to activate your ' + tier + ' tier.\n\n' +
+              'Your purchase is saved and will be applied immediately after login.');
         return;
     }
     
-    console.log('👤 Current user:', currentUser.email);
-    console.log('📊 Current tier:', currentUser.tier);
+    console.log('👤 User:', currentUser.email);
+    console.log('📊 Current Tier:', currentUser.tier);
+    console.log('🎯 Target Tier:', tier);
     
-    // Map payment tiers to app tiers
-    let appTier = tier;
+    // Get tier details
+    let tierName = '';
+    let features = '';
+    
     if (tier === 'PRO') {
-        appTier = 'PRO'; // Basic Pack
+        tierName = 'Basic Pack ($5)';
+        features = 'Nutrition Goals + Meal Plans';
     } else if (tier === 'STANDARD') {
-        appTier = 'STANDARD'; // Standard Pack
+        tierName = 'Standard Pack ($10)';
+        features = 'Goals + Advanced Analytics';
     } else if (tier === 'ELITE') {
-        appTier = 'ELITE'; // Premium Pack
+        tierName = 'Premium Pack ($20)';
+        features = 'Complete System + Workouts';
     }
     
-    console.log('🔄 Updating to tier:', appTier);
+    console.log('📦 Package:', tierName);
+    console.log('✨ Features:', features);
+    console.log('');
+    console.log('🔄 APPLYING TIER UPDATE...');
     
-    // Update user tier with force flag
-    updateUserTier(appTier, true); // true = force update
-    
-    // Clear pending unlock since we processed it
-    localStorage.removeItem('pendingUnlock');
-    
-    console.log('✅ Tier update complete');
-    
-    // Show success message THEN trigger personalization survey
-    showUnlockSuccess(appTier);
-    
-    // Trigger personalization survey after a short delay
-    setTimeout(() => {
-        if (typeof showPersonalizationSurvey === 'function') {
-            showPersonalizationSurvey(appTier);
+    try {
+        // Wait for tier update to complete (including Firebase)
+        await updateUserTier(tier, true);
+        
+        console.log('✅ TIER UPDATE COMPLETE');
+        console.log('');
+        
+        // Verify the update worked
+        const verifyUser = getCurrentUser();
+        console.log('🔍 VERIFICATION:');
+        console.log('   Expected:', tier);
+        console.log('   Actual:', verifyUser.tier);
+        
+        if (verifyUser.tier === tier) {
+            console.log('✅ VERIFIED - Tier correctly applied');
+        } else {
+            console.error('❌ VERIFICATION FAILED!');
+            console.error('   Tier mismatch detected!');
+            console.error('   Attempting recovery...');
+            
+            // Force update again
+            verifyUser.tier = tier;
+            localStorage.setItem('currentUser', JSON.stringify(verifyUser));
+            
+            if (isFirebaseReady() && verifyUser.uid) {
+                await firebase.database().ref('users/' + verifyUser.uid).update({
+                    tier: tier,
+                    paidTier: tier,
+                    paymentDate: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+            }
+            
+            updateTierDisplay();
+            initializeTabSystem();
+            
+            console.log('✅ Recovery complete');
         }
-    }, 2000); // Give user time to see success message first
+        
+        // Clear pending unlock since we processed it
+        localStorage.removeItem('pendingUnlock');
+        
+        console.log('═══════════════════════════════════════');
+        console.log('✅ PAYMENT UNLOCK SUCCESS');
+        console.log('═══════════════════════════════════════');
+        console.log('');
+        
+        // Show success message
+        showUnlockSuccess(tier);
+        
+        // Trigger personalization survey after delay
+        setTimeout(() => {
+            if (typeof showPersonalizationSurvey === 'function') {
+                console.log('🎯 Showing personalization survey for tier:', tier);
+                showPersonalizationSurvey(tier);
+            }
+        }, 3000);
+        
+    } catch (error) {
+        console.error('❌ TIER UPDATE FAILED:', error);
+        console.log('═══════════════════════════════════════');
+        
+        alert('⚠️ There was an error activating your ' + tierName + '.\n\n' +
+              'Please refresh the page or contact support.\n\n' +
+              'Your payment was successful - we just need to activate it.');
+    }
 }
 
 // Show unlock success notification
