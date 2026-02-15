@@ -202,9 +202,19 @@ function previousSurveyStep(step) {
 }
 
 // Complete survey and generate personalized plan
-function completeSurvey() {
+async function completeSurvey() {
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('📝 COMPLETING PERSONALIZATION SURVEY');
+    console.log('═══════════════════════════════════════════════════════════════════');
+    
     const currentUser = getCurrentUser();
-    if (!currentUser) return;
+    if (!currentUser) {
+        console.error('❌ No user for survey completion');
+        alert('Error: No user logged in. Please log in first.');
+        return;
+    }
+    
+    console.log('✅ User:', currentUser.email);
     
     // Collect all survey data
     const profile = {
@@ -231,40 +241,106 @@ function completeSurvey() {
         updatedAt: new Date().toISOString()
     };
     
+    console.log('📊 Profile data collected:', profile);
+    
     // Validate
     if (!profile.age || !profile.weight || !profile.height) {
-        alert('Please fill in all required fields');
+        console.error('❌ Validation failed - missing required fields');
+        alert('Please fill in all required fields (Age, Weight, Height)');
         return;
     }
     
-    // Save profile
-    const profileKey = `profile_${currentUser.email}`;
-    localStorage.setItem(profileKey, JSON.stringify(profile));
+    console.log('✅ Validation passed');
     
-    // Sync to Firebase
+    // Save profile to localStorage FIRST (instant backup)
+    try {
+        const profileKey = `profile_${currentUser.email}`;
+        localStorage.setItem(profileKey, JSON.stringify(profile));
+        console.log('✅ Profile saved to localStorage');
+    } catch (error) {
+        console.error('❌ localStorage save failed:', error);
+        alert('Error: Could not save to local storage. Please check your browser settings.');
+        return;
+    }
+    
+    // Sync to Firebase and WAIT for it to complete
     if (isFirebaseReady() && currentUser.uid) {
-        firebase.database().ref('users/' + currentUser.uid + '/profile').set(profile);
+        try {
+            console.log('🔥 Saving profile to Firebase...');
+            console.log('   Path: users/' + currentUser.uid + '/profile');
+            
+            await firebase.database().ref('users/' + currentUser.uid + '/profile').set(profile);
+            console.log('✅ Profile saved to Firebase successfully');
+            
+            // Verify the save with a read
+            console.log('🔍 Verifying Firebase save...');
+            const snapshot = await firebase.database().ref('users/' + currentUser.uid + '/profile').once('value');
+            const savedProfile = snapshot.val();
+            
+            if (savedProfile && savedProfile.age === profile.age) {
+                console.log('✅ Firebase save verified!');
+                console.log('   Verified data:', savedProfile);
+            } else {
+                console.error('⚠️ Firebase save verification failed - data mismatch');
+                console.error('   Expected:', profile);
+                console.error('   Got:', savedProfile);
+            }
+        } catch (error) {
+            console.error('❌ Firebase save failed:', error);
+            alert('Warning: Profile saved locally but cloud sync failed. Your data is safe on this device but may not sync across devices.\n\nError: ' + error.message);
+            // Continue anyway - localStorage save succeeded
+        }
+    } else {
+        console.warn('⚠️ Firebase not ready or no UID');
+        console.warn('   isFirebaseReady:', typeof isFirebaseReady === 'function' ? isFirebaseReady() : 'function not found');
+        console.warn('   currentUser.uid:', currentUser.uid);
+        alert('Warning: Cloud sync unavailable. Profile saved locally only.');
     }
     
     // Generate personalized nutrition goals
-    generatePersonalizedNutrition(profile);
+    console.log('🍽️ Generating personalized nutrition...');
+    try {
+        generatePersonalizedNutrition(profile);
+        console.log('✅ Nutrition goals generated');
+    } catch (error) {
+        console.error('❌ Error generating nutrition:', error);
+    }
     
     // Generate personalized workout plan (for ELITE tier)
     if (currentUser.tier === 'ELITE') {
-        generatePersonalizedWorkout(profile);
+        console.log('💪 Generating personalized workout plan...');
+        try {
+            generatePersonalizedWorkout(profile);
+            console.log('✅ Workout plan generated');
+        } catch (error) {
+            console.error('❌ Error generating workout:', error);
+        }
     }
     
     // Close survey
-    document.getElementById('personalizationModal').remove();
+    const modal = document.getElementById('personalizationModal');
+    if (modal) {
+        modal.remove();
+        console.log('✅ Survey modal closed');
+    }
+    
+    console.log('✅ Survey completion successful');
+    console.log('═══════════════════════════════════════════════════════════════════');
     
     // Show success message
-    showSuccessMessage('Your personalized plan is ready!');
+    showSuccessMessage('✅ Profile saved successfully!');
     
     // Navigate to appropriate tab
     if (currentUser.tier === 'ELITE') {
-        setTimeout(() => switchTab('workouts'), 500);
+        setTimeout(() => {
+            console.log('🔄 Navigating to workouts tab...');
+            switchTab('workouts');
+        }, 500);
     } else {
-        setTimeout(() => switchTab('goals'), 500);
+        setTimeout(() => {
+            console.log('🔄 Navigating to goals tab...');
+            switchTab('goals');
+        }, 500);
     }
 }
 
@@ -593,4 +669,89 @@ window.completeSurvey = completeSurvey;
 window.getUserProfile = getUserProfile;
 window.displayProfile = displayProfile;
 window.loadProfileFromFirebase = loadProfileFromFirebase;
+
+// Test function for debugging profile loading
+async function testProfileLoad() {
+    console.clear();
+    console.log('═══════════════════════════════════════');
+    console.log('🧪 PROFILE LOAD TEST');
+    console.log('═══════════════════════════════════════');
+    
+    const user = getCurrentUser();
+    console.log('👤 User:', user?.email);
+    console.log('🆔 UID:', user?.uid);
+    console.log('🎯 Tier:', user?.tier);
+    console.log('');
+    
+    // Check localStorage
+    const profileKey = `profile_${user.email}`;
+    const localProfile = localStorage.getItem(profileKey);
+    console.log('💾 localStorage Profile:');
+    console.log('   Exists:', !!localProfile);
+    if (localProfile) {
+        try {
+            const parsed = JSON.parse(localProfile);
+            console.log('   Age:', parsed.age);
+            console.log('   Weight:', parsed.weight);
+            console.log('   Fitness Level:', parsed.fitnessLevel);
+            console.log('   Workout Days:', parsed.workoutDays);
+        } catch (e) {
+            console.error('   Parse error:', e);
+        }
+    }
+    console.log('');
+    
+    // Check Firebase
+    if (typeof isFirebaseReady === 'function' && isFirebaseReady() && user.uid) {
+        console.log('🔥 Firebase Profile:');
+        try {
+            const snapshot = await firebase.database()
+                .ref('users/' + user.uid + '/profile')
+                .once('value');
+            const fbProfile = snapshot.val();
+            console.log('   Exists:', !!fbProfile);
+            if (fbProfile) {
+                console.log('   Age:', fbProfile.age);
+                console.log('   Weight:', fbProfile.weight);
+                console.log('   Fitness Level:', fbProfile.fitnessLevel);
+                console.log('   Workout Days:', fbProfile.workoutDays);
+            }
+        } catch (e) {
+            console.error('   Error:', e);
+        }
+    } else {
+        console.log('🔥 Firebase not ready or no UID');
+    }
+    console.log('');
+    
+    // Try loading
+    console.log('🔄 Testing loadProfileFromFirebase...');
+    try {
+        const loaded = await loadProfileFromFirebase();
+        console.log('✅ Result:', loaded ? 'Profile loaded' : 'No profile');
+        if (loaded) {
+            console.log('   Age:', loaded.age);
+            console.log('   Fitness Level:', loaded.fitnessLevel);
+        }
+    } catch (e) {
+        console.error('❌ Error:', e);
+    }
+    console.log('');
+    
+    // Try displaying
+    console.log('🔄 Testing displayProfile...');
+    try {
+        await displayProfile();
+        console.log('✅ Display complete');
+    } catch (e) {
+        console.error('❌ Error:', e);
+    }
+    
+    console.log('═══════════════════════════════════════');
+    console.log('');
+    console.log('Check the profile banners in Goals and Workouts tabs.');
+    console.log('They should show your data (not --)');
+}
+
+window.testProfileLoad = testProfileLoad;
 window.editProfile = editProfile;
