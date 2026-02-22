@@ -137,32 +137,6 @@
                 </div>
                 
                 <div class="tracker-grid">
-                    <!-- Quick Add Foods Section -->
-                    <div class="tracker-card" style="grid-column: 1 / -1;">
-                        <div class="card-header">
-                            <h3>🍽️ Quick Add Common Foods</h3>
-                            <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
-                                Click any food to instantly add its nutrition to your daily total
-                            </p>
-                        </div>
-                        
-                        <!-- Food Search -->
-                        <div style="margin-bottom: 1.5rem;">
-                            <input 
-                                type="text" 
-                                id="foodSearchInput" 
-                                placeholder="🔍 Search foods (e.g., chicken, rice, banana)..."
-                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg-secondary); color: var(--color-text); font-size: 0.95rem;"
-                                oninput="filterFoods(this.value)"
-                            >
-                        </div>
-                        
-                        <!-- Food Categories -->
-                        <div id="foodCategoriesContainer">
-                            <!-- Populated by JavaScript -->
-                        </div>
-                    </div>
-                    
                     <div class="tracker-card">
                         <div class="card-header">
                             <h3>Add Today's Nutrition</h3>
@@ -619,6 +593,95 @@
                         <li>Include healthy fats (avocado, nuts, olive oil) for hormone production</li>
                         <li>Track consistently for at least 2 weeks before adjusting macros</li>
                     </ul>
+                </div>
+
+                <!-- Food Reference Guide -->
+                <div class="food-reference-section">
+                    <div class="section-header" style="margin-bottom: 1rem;">
+                        <h3>🍽️ Food Database - Click to Add to Tracker</h3>
+                        <p style="color: var(--color-text-secondary); font-size: 0.95rem; margin-top: 0.5rem;">
+                            Click any food to add it to today's nutrition totals
+                        </p>
+                    </div>
+                    
+                    <!-- Filtering Controls -->
+                    <div class="food-controls">
+                        <div class="food-filters">
+                            <!-- Search -->
+                            <div class="filter-group" style="flex: 2;">
+                                <label style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 0.25rem; display: block;">🔍 Search Foods</label>
+                                <input 
+                                    type="text" 
+                                    id="foodSearchInput" 
+                                    placeholder="Type to search (e.g., chicken, rice, banana)..."
+                                    style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg-secondary); color: var(--color-text); font-size: 0.95rem;"
+                                    oninput="filterFoods()"
+                                >
+                            </div>
+                            
+                            <!-- Category Filter -->
+                            <div class="filter-group">
+                                <label style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 0.25rem; display: block;">📂 Category</label>
+                                <select 
+                                    id="categoryFilter" 
+                                    onchange="filterFoods()"
+                                    style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg-secondary); color: var(--color-text); font-size: 0.95rem;"
+                                >
+                                    <option value="all">All Categories</option>
+                                    <option value="chicken">🐔 Chicken</option>
+                                    <option value="beef">🥩 Beef</option>
+                                    <option value="pork">🐖 Pork</option>
+                                    <option value="turkey">🦃 Turkey</option>
+                                    <option value="seafood">🐟 Fish & Seafood</option>
+                                    <option value="eggs">🥚 Eggs & Dairy Proteins</option>
+                                    <option value="rice">🍚 Rice</option>
+                                    <option value="pasta">🍝 Pasta</option>
+                                    <option value="bread">🍞 Bread</option>
+                                    <option value="potatoes">🥔 Potatoes</option>
+                                    <option value="grains">🌾 Grains & Cereals</option>
+                                    <option value="fruits">🍎 Fruits</option>
+                                    <option value="vegetables">🥦 Vegetables</option>
+                                    <option value="nuts">🥜 Nuts & Seeds</option>
+                                    <option value="dairy">🥛 Dairy & Alternatives</option>
+                                    <option value="supplements">💪 Protein Supplements</option>
+                                    <option value="beverages">☕ Beverages</option>
+                                    <option value="mcdonalds">🍔 McDonald's</option>
+                                    <option value="chipotle">🌯 Chipotle</option>
+                                    <option value="subway">🥪 Subway</option>
+                                    <option value="fastfood">🍟 Other Fast Food</option>
+                                    <option value="snacks">🍪 Snacks & Sweets</option>
+                                    <option value="condiments">🍯 Condiments</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Sort -->
+                            <div class="filter-group">
+                                <label style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 0.25rem; display: block;">⬇️ Sort By</label>
+                                <select 
+                                    id="sortFilter" 
+                                    onchange="sortFoods()"
+                                    style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg-secondary); color: var(--color-text); font-size: 0.95rem;"
+                                >
+                                    <option value="name">Name (A-Z)</option>
+                                    <option value="calories-low">Calories (Low to High)</option>
+                                    <option value="calories-high">Calories (High to Low)</option>
+                                    <option value="protein-high">Protein (High to Low)</option>
+                                    <option value="carbs-low">Carbs (Low to High)</option>
+                                    <option value="fat-low">Fat (Low to High)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Results Count -->
+                        <div id="foodResultsCount" style="margin-top: 0.75rem; color: var(--color-text-secondary); font-size: 0.9rem;">
+                            Loading foods...
+                        </div>
+                    </div>
+                    
+                    <!-- Food Categories Container -->
+                    <div id="foodCategoriesContainer" style="margin-top: 1.5rem;">
+                        <!-- Populated by JavaScript -->
+                    </div>
                 </div>
             </div>
 
@@ -1514,7 +1577,7 @@
 
         <!-- Footer -->
         <footer class="app-footer">
-            <p>&copy; 2026 FitPlanner Pro. Track smarter, achieve faster.</p>
+            <p>&copy; 2024 FitPlanner Pro. Track smarter, achieve faster.</p>
         </footer>
     </div>
 
