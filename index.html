@@ -137,6 +137,32 @@
                 </div>
                 
                 <div class="tracker-grid">
+                    <!-- Quick Add Foods Section -->
+                    <div class="tracker-card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <h3>🍽️ Quick Add Common Foods</h3>
+                            <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
+                                Click any food to instantly add its nutrition to your daily total
+                            </p>
+                        </div>
+                        
+                        <!-- Food Search -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <input 
+                                type="text" 
+                                id="foodSearchInput" 
+                                placeholder="🔍 Search foods (e.g., chicken, rice, banana)..."
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg-secondary); color: var(--color-text); font-size: 0.95rem;"
+                                oninput="filterFoods(this.value)"
+                            >
+                        </div>
+                        
+                        <!-- Food Categories -->
+                        <div id="foodCategoriesContainer">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                    
                     <div class="tracker-card">
                         <div class="card-header">
                             <h3>Add Today's Nutrition</h3>
@@ -1488,7 +1514,7 @@
 
         <!-- Footer -->
         <footer class="app-footer">
-            <p>&copy; 2026 FitPlanner Pro. Track smarter, achieve faster.</p>
+            <p>&copy; 2024 FitPlanner Pro. Track smarter, achieve faster.</p>
         </footer>
     </div>
 
@@ -1497,6 +1523,7 @@
     <script src="payments.js"></script>
     <script src="admin.js"></script>
     <script src="firebase-config.js"></script>
+    <script src="food-database.js"></script>
     <script src="personalization.js"></script>
     <script src="ux-enhancements.js"></script>
     <script src="qol-enhancements.js"></script>
